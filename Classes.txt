@@ -1,0 +1,44 @@
+View Classes
+	Start Screen
+
+		Login
+
+		New User
+
+	Display
+
+		Rename File
+
+		Add File
+
+		Remove File
+
+		File Search
+
+	Settings
+
+		Delete All
+
+		Change Pin/Password
+
+
+Additional Classes
+	Encryption (returns object)
+
+		Encrypt Object
+
+		Decrypt Object
+
+	Server Connection (all methods besides Restore return Booleans)
+
+		New User
+
+		Login
+
+		Upload
+
+		Rename
+
+		Delete
+
+		Restore (returns Array of Encrypted Objects)
