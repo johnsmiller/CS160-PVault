@@ -54,6 +54,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         // Set up the login form.
         mEmailView = (AutoCompleteTextView) findViewById(R.id.email);
         populateAutoComplete();
+        //TODO: Restore previous email
 
         mPasswordView = (EditText) findViewById(R.id.password);
         mPasswordView.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -253,15 +254,22 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            if(ServerConnection.userLogin(mEmail, mPassword)) {
+            Boolean userLoginResult;
+
+            if((userLoginResult = ServerConnection.userLogin(mEmail, mPassword))) { //return (ServerConnection.userLogin(mEmail, mPassword) || userCreate(mEmail, mPassword));
                 return true;
             }
 
-            else if(ServerConnection.userCreate(mEmail, mPassword))  {
+            else if(userLoginResult == null && ServerConnection.userCreate(mEmail, mPassword))  {
+                //TODO: Create Password PROMPT if Account does not exist
                 return true;
             }
 
-            return false;
+            else {
+                //TODO: if(Forgot password prompt), ServerConnection.userPasswordReset(mEmail)
+                return false;
+            }
+
         }
 
         @Override

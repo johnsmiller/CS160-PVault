@@ -24,14 +24,25 @@ public class ServerConnection {
     }
 
     /**
-     * Returns true if operation is successful, false otherwise. False may indicate server
-     * connection error
+     * Returns true if operation is successful, false if user exists but no password, null if user
+     * does not exist
+     * @param userName email address / user name to send to server
+     * @param password password for user
      * @return true if successful
      */
-    protected static boolean userLogin(String userName, String password)
+    protected static Boolean userLogin(String userName, String password)
     {
         serverConnect();
         //TODO: Send user credientials
+        serverDisconnect();
+        //TODO: return null if user does not exist, true if login successful, false otherwise
+        return false;
+    }
+
+    protected static Boolean userPasswordReset(String userName)
+    {
+        serverConnect();
+        //TODO: Send username and password reset command
         serverDisconnect();
         return false;
     }
