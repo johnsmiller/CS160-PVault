@@ -11,7 +11,7 @@ public class ServerConnection {
      * Returns true if new user successfully created on server
      * @return true if new user created, false if user exists or server error
      */
-    protected static boolean userCreate()
+    protected static boolean userCreate(String userName, String password)
     {
         serverConnect();
         /*
@@ -23,7 +23,12 @@ public class ServerConnection {
         return false;
     }
 
-    protected static boolean userLogin()
+    /**
+     * Returns true if operation is successful, false otherwise. False may indicate server
+     * connection error
+     * @return true if successful
+     */
+    protected static boolean userLogin(String userName, String password)
     {
         serverConnect();
         //TODO: Send user credientials
@@ -31,6 +36,11 @@ public class ServerConnection {
         return false;
     }
 
+    /**
+     * Returns true if operation is successful, false otherwise. False may indicate server
+     * connection error
+     * @return true if successful
+     */
     protected static boolean fileUpload()
     {
         serverConnect();
@@ -39,6 +49,11 @@ public class ServerConnection {
         return false;
     }
 
+    /**
+     * Returns true if operation is successful, false otherwise. False may indicate server
+     * connection error
+     * @return true if successful
+     */
     protected static boolean fileRename()
     {
         serverConnect();
@@ -47,6 +62,11 @@ public class ServerConnection {
         return false;
     }
 
+    /**
+     * Returns true if operation is successful, false otherwise. False may indicate server
+     * connection error
+     * @return true if successful
+     */
     protected static boolean fileDelete()
     {
         serverConnect();
@@ -55,6 +75,11 @@ public class ServerConnection {
         return false;
     }
 
+    /**
+     * Returns true if operation is successful, false otherwise. False may indicate server
+     * connection error
+     * @return true if successful
+     */
     protected static Object[] fileRestore()
     {
         serverConnect();
@@ -65,6 +90,11 @@ public class ServerConnection {
         return null;
     }
 
+    /**
+     * Returns true if operation is successful, false otherwise. False indicates server
+     * connection error
+     * @return true if successful
+     */
     private static boolean serverConnect()
     {
         //TODO: Server connection logic here
