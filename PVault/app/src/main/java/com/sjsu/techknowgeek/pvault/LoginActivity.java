@@ -254,7 +254,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            Boolean userLoginResult;
+            Boolean userLoginResult = null;
 
             if((userLoginResult = ServerConnection.userLogin(mEmail, mPassword))) { //return (ServerConnection.userLogin(mEmail, mPassword) || userCreate(mEmail, mPassword));
                 return true;

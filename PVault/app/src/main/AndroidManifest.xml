@@ -17,6 +17,19 @@
             android:label="@string/title_activity_login"
             android:windowSoftInputMode="adjustResize|stateVisible" >
         </activity>
+        <activity
+            android:name="com.sjsu.techknowgeek.pvault.MainActivity"
+            android:label="@string/title_activity_main"
+            android:parentActivityName="com.sjsu.techknowgeek.pvault.LoginActivity" >
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.sjsu.techknowgeek.pvault.LoginActivity" />
+            <intent-filter>
+                <action android:name="android.intent.action.SEARCH" />
+            </intent-filter>
+            <meta-data android:name="android.app.searchable"
+                android:resource="@xml/searchable"/>
+        </activity>
     </application>
 
 </manifest>

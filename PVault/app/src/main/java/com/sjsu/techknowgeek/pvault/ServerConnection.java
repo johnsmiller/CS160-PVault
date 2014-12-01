@@ -36,7 +36,7 @@ public class ServerConnection {
         //TODO: Send user credientials
         serverDisconnect();
         //TODO: return null if user does not exist, true if login successful, false otherwise
-        return false;
+        return null;
     }
 
     protected static Boolean userPasswordReset(String userName)
