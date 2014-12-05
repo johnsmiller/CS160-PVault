@@ -47,6 +47,14 @@ public class ServerConnection {
         return false;
     }
 
+    protected  static boolean userPasswordChange(String userName, String oldPassword, String newPassword)
+    {
+        serverConnect();
+        //TODO: Send username, old password, new password, and password change command
+        serverDisconnect();
+        return false;
+    }
+
     /**
      * Returns true if operation is successful, false otherwise. False may indicate server
      * connection error
