@@ -30,13 +30,14 @@ public class FTPServer {
     fileDelete() //Delete existing file
     fileRestore() //return all existing files
     */
+    
+    private static final String PROPERTIES_FILE_NAME = "myusers.properties";
+    
     private static FTPServer serverInstance;
     
     private FtpServer server;
     private UserManager userManager;
-    
-    private static final String PROPERTIES_FILE_NAME = "myusers.properties";
-    
+        
     
     private FTPServer() throws FtpException
     {

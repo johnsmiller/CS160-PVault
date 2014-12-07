@@ -21,6 +21,7 @@ public class Main {
     public static void main(String[] args) {
         try {
             Model.getInstance().addUser("user@example", "password");
+            System.out.println(Model.getInstance().loginUser("user@example", "password"));
         } catch (FtpException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }

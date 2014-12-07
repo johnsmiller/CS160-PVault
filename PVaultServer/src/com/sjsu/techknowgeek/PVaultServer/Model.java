@@ -6,10 +6,11 @@
 package com.sjsu.techknowgeek.PVaultServer;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
+import org.apache.ftpserver.ftplet.AuthenticationFailedException;
 import org.apache.ftpserver.ftplet.Authority;
 import org.apache.ftpserver.ftplet.FtpException;
+import org.apache.ftpserver.usermanager.UsernamePasswordAuthentication;
 import org.apache.ftpserver.usermanager.impl.BaseUser;
 import org.apache.ftpserver.usermanager.impl.ConcurrentLoginPermission;
 import org.apache.ftpserver.usermanager.impl.WritePermission;
@@ -23,8 +24,6 @@ public class Model {
     
     private static Model modelInstance;
     
-    private HashMap<String, String> users;
-    
     protected static Model getInstance()
     {
         if(modelInstance == null)
@@ -34,10 +33,7 @@ public class Model {
     
     private Model()
     {
-        //TODO: recover saved model? PROBLEM: FTP SERVER WILL REMEMBER USERS BUT MODEL CURRENTLY DOES NOT
-        //SOLUTION: USE FTP SERVER AS MODEL??
-        //initialize global variables
-        users = new HashMap<>();
+        
     }
     
     private void updateFtpUser(String username, String password) throws FtpException
@@ -49,17 +45,14 @@ public class Model {
         authorities.add(new WritePermission());
         authorities.add(new ConcurrentLoginPermission(Integer.MAX_VALUE,Integer.MAX_VALUE));
         user.setAuthorities(authorities);
-        user.setHomeDirectory(username.substring(0, username.indexOf("@")));
+        int split = username.indexOf("@");
+        user.setHomeDirectory(username.substring(0, split).toLowerCase() + "\'AT\'" + username.substring(split+1).toLowerCase());
         
         FTPServer.getInstance().getUserManager().save(user);
     }
     
     protected synchronized boolean addUser(String username, String password) throws FtpException
-    {
-        if(users.containsKey(username))
-            return false;
-        users.put(username, password);
-        
+    {      
         updateFtpUser(username, password);
         
         return true;
@@ -69,12 +62,12 @@ public class Model {
     {
         FTPServer.getInstance().getUserManager().delete(username);
         
-        return (users.remove(username) != null); 
+        return true; 
     }
     
-    protected synchronized boolean isUser(String username)
+    protected synchronized boolean isUser(String username) throws FtpException
     {
-        return users.containsKey(username);
+        return FTPServer.getInstance().getUserManager().doesExist(username);
     }
     
     /**
@@ -84,7 +77,7 @@ public class Model {
      */
     protected synchronized String resetUserPassword(String username) throws FtpException
     {
-        if(!users.containsKey(username))
+        if(!FTPServer.getInstance().getUserManager().doesExist(username))
             return null;
         String password = "";
         for(int i = 0; i < RESET_PASSWORD_LENGTH; i++)
@@ -92,24 +85,27 @@ public class Model {
             password += Math.floor(Math.random()*10);
         }
         
-        users.put(username, SealObject.encryptPass(password));
+        updateFtpUser(username, SealObject.encryptPass(password));
         
-        updateFtpUser(username, password);
+        System.out.println("New password generated for " + username + "\nNew Password is: " + password);
         
         return password;
     }
     
-    protected synchronized boolean loginUser(String username, String password)
+    protected synchronized boolean loginUser(String username, String password) throws FtpException
     {
-        return users.containsKey(username) && password.equals(users.get(username));
+        try{
+            FTPServer.getInstance().getUserManager().authenticate(new UsernamePasswordAuthentication(username, password));
+            return true;
+        } catch (AuthenticationFailedException ex) {
+            return false;
+        }
     }
     
     protected synchronized boolean changeUserPassword(String username, String oldPassword, String newPassword) throws FtpException
     {
         if(loginUser(username, oldPassword))
-        {
-            users.put(username, newPassword);
-            
+        {            
             updateFtpUser(username, newPassword);
             
             return true;
