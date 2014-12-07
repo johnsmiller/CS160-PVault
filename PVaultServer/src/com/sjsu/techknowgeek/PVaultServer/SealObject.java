@@ -1,11 +1,13 @@
 //Encrpytion approach adpted from http://stackoverflow.com/questions/6262374/encryption-with-aes-algorithm-in-java
-//Used to encrypt/decrypt model class objects
+//Used to encrypt/decrypt objects
 
-package com.sjsu.techknowgeek.pvault;
+package com.sjsu.techknowgeek.PVaultServer;
 
 import java.io.IOException;
 import java.io.Serializable;
+import java.math.BigInteger;
 import java.security.InvalidKeyException;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.KeySpec;
@@ -76,8 +78,8 @@ public class SealObject {
     {
         return input.getObject(dcipher);
     }
-	
-	protected static String encryptPass(String Password)
+    
+    protected static String encryptPass(String Password)
     {
         String md5 = null;
         
