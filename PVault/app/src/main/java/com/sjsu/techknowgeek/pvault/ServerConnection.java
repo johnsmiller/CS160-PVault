@@ -1,5 +1,7 @@
 package com.sjsu.techknowgeek.pvault;
 
+import org.apache.commons.net.ftp.FTPClient;
+
 /**
  * Created by John on 11/20/2014.
  */
@@ -117,6 +119,7 @@ public class ServerConnection {
     private static boolean serverConnect()
     {
         //TODO: Server connection logic here
+        FTPClient ftpClient = new FTPClient();
         return false;
     }
 
