@@ -20,8 +20,9 @@ public class Main {
      */
     public static void main(String[] args) {
         try {
-            Model.getInstance().addUser("user2@example", "password");
-            System.out.println(Model.getInstance().loginUser("user2@example", "password"));
+            Model.getInstance();
+            FTPServer.getInstance();
+            MessagingServer.getInstance();
         } catch (FtpException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }

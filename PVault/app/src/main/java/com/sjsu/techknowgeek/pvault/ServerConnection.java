@@ -47,7 +47,13 @@ public class ServerConnection {
 
         try {
             String result = new ServerCommandTask().execute(command).get();
-            return result.contains(SUCCESS_MESSAGE);
+            if(result.contains(SUCCESS_MESSAGE))
+            {
+                loginUserName = userName;
+                loginPassword = password;
+                return true;
+            }
+            return false;
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
             return false;
@@ -137,8 +143,7 @@ public class ServerConnection {
     protected static void fileRename(String oldFileName, String newFileName)
     {
         //send rename file command, old file name, & new file name
-        String command = "rename:" + oldFileName + "," + newFileName;
-        new ServerCommandTask().execute(command);
+        new ModifyFilesTask().execute(oldFileName,newFileName);
     }
 
     /**
@@ -149,8 +154,7 @@ public class ServerConnection {
     protected static void fileDelete(String fileName)
     {
         //send delete command
-        String command = "deleteFile:" + fileName;
-        new ServerCommandTask().execute(command);
+        new ModifyFilesTask().execute(fileName);
     }
 
     /**
@@ -282,6 +286,47 @@ public class ServerConnection {
 
         protected void onProgressUpdate(Integer... progress) {
             //TODO: Update File Download Progress??
+        }
+
+        protected void onPostExecute(Void v) {
+
+        }
+    }
+
+    private static class ModifyFilesTask extends AsyncTask<String, Void, Boolean> {
+        protected Boolean doInBackground(String... params) {
+            //Download all the things!!!!!!
+            FTPClient mFTPClient = ftpServerConnect();
+            if(mFTPClient==null)
+                return false;
+
+
+            OutputStream outputStream = null;
+            try {
+                boolean status = false;
+                if(params.length==1) //delete command
+                    status = mFTPClient.deleteFile(params[0]);
+                else if(params.length==2)
+                    status = mFTPClient.rename(params[0], params[1]);
+                ftpServerDisconnect(mFTPClient);
+                return status;
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            } finally {
+                ftpServerDisconnect(mFTPClient);
+                if (outputStream != null) {
+                    try {
+                        outputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            return false;
+        }
+
+        protected void onProgressUpdate(Integer... progress) {
+            //TODO: Update File Edit Progress??
         }
 
         protected void onPostExecute(Void v) {

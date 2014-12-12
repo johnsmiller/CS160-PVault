@@ -16,6 +16,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import org.apache.ftpserver.ftplet.FtpException;
 
 
 
@@ -42,10 +43,10 @@ public class MessagingServer implements Runnable{
     private String message;
 
     private MessagingServer() {
-        
+        new Thread(this).start();
     }
 
-    public static MessagingServer getMessagingServerInstance()
+    public static MessagingServer getInstance()
     {
         if(msgServer == null)
             msgServer = new MessagingServer();
@@ -79,13 +80,16 @@ public class MessagingServer implements Runnable{
                 
                 String ret = FAILURE_MESSAGE;
 
-                if (message.contains("register")) {
-                    ret = register();
-                } else if (message.contains("results:")) {
-                   ret = result();
-                } else if (message.contains("statistics:")) {
-                    ret = statistics();
-                }
+                //"changePassword", "resetPassword", "loginUser", "newUser"
+                if (message.contains("newUser")) {
+                    ret = newUser();
+                } else if (message.contains("loginUser")) {
+                   ret = loginUser();
+                } else if (message.contains("resetPassword")) {
+                    ret = resetPassword();
+                } else if (message.contains("changePassword")) {
+                   ret = changePassword();
+                }                 
                 ret += ".\n";
                 System.out.println("Sending: " + ret + " to the client");
                 writer.write(ret);
@@ -93,39 +97,70 @@ public class MessagingServer implements Runnable{
                 System.out.println("Sent");
 
             } catch (IOException ie) {
-                ie.printStackTrace();
+                System.out.println("Messaging Server Encountered an Error:" + ie.getLocalizedMessage());
             } finally {
                 if (server != null) {
                     try {
                         server.close();
                         System.out.println("Socket Closed");
                     } catch (IOException ex) {
-                        Logger.getLogger(fingerciseserver.FingerciseServer.class.getName()).log(Level.SEVERE, null, ex);
+                        System.out.println("Messaging Server Encountered an Error:" + ex.getLocalizedMessage());
                     }
                 }
             }
         }
     }
-    
-    
-    public static enum CommandEnum
-    {
-        createUser, loginUser, resetUserPassword, changeUserPassword, deleteFile, renameFile;
-    }
 
-    public static class ServerCommand
-    {
-        CommandEnum command;
-        String userName;
-        String userPassword;
-        String newUserPassword;
-
-        public ServerCommand(CommandEnum cmd, String usrName, String usrPassword, String newUsrPassword)
-        {
-            command = cmd;
-            userName = usrName;
-            userPassword = usrPassword;
-            newUserPassword = newUsrPassword;
+    private String newUser() {
+        int userNameStart = message.indexOf(":")+1, delimiter = message.indexOf(",");
+        String newUser = message.substring(userNameStart, delimiter);
+        String password = message.substring(delimiter+1);
+        
+        try {
+            return (Model.getInstance().addUser(newUser, password))? SUCCESS_MESSAGE : FAILURE_MESSAGE;
+        } catch (FtpException ex) {
+            System.out.println("Model's Add User Encountered an FTP Error: " + ex.getLocalizedMessage());
+            return FAILURE_MESSAGE;
         }
     }
+
+    private String loginUser() {
+        int userNameStart = message.indexOf(":")+1, delimiter = message.indexOf(",");
+        String user = message.substring(userNameStart, delimiter);
+        String password = message.substring(delimiter+1);
+        
+        try {
+            return (Model.getInstance().loginUser(user, password))? SUCCESS_MESSAGE : FAILURE_MESSAGE;
+        } catch (FtpException ex) {
+            System.out.println("Model's Login User Encountered an FTP Error: " + ex.getLocalizedMessage());
+            return FAILURE_MESSAGE;
+        }
+    }
+
+    private String resetPassword() {
+        int userNameStart = message.indexOf(":")+1;
+        String user = message.substring(userNameStart);
+        
+        try {
+            return (Model.getInstance().resetUserPassword(user)!=null)? SUCCESS_MESSAGE : FAILURE_MESSAGE;
+        } catch (FtpException ex) {
+            System.out.println("Model's Reset User Password Encountered an FTP Error: " + ex.getLocalizedMessage());
+            return FAILURE_MESSAGE;
+        }
+    }
+
+    private String changePassword() {
+        int userNameStart = message.indexOf(":")+1, delimiter1 = message.indexOf(","), delimiter2 = message.indexOf(",", delimiter1+1);
+        String user = message.substring(userNameStart, delimiter1);
+        String oldPassword = message.substring(delimiter1+1);
+        String newPassword = message.substring(delimiter2+1);
+        
+        try {
+            return (Model.getInstance().changeUserPassword(user, oldPassword, newPassword))? SUCCESS_MESSAGE : FAILURE_MESSAGE;
+        } catch (FtpException ex) {
+            System.out.println("Model's Change User Password Encountered an FTP Error: " + ex.getLocalizedMessage());
+            return FAILURE_MESSAGE;
+        }
+    }   
+    
 }
