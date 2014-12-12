@@ -1,13 +1,40 @@
 package com.sjsu.techknowgeek.pvault;
 
+import android.os.AsyncTask;
+import android.util.Log;
+
+import org.apache.commons.net.ftp.FTP;
 import org.apache.commons.net.ftp.FTPClient;
+import org.apache.commons.net.ftp.FTPFile;
+import org.apache.commons.net.ftp.FTPReply;
+
+import java.io.BufferedOutputStream;
+import java.io.BufferedReader;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
+import java.net.InetAddress;
+import java.net.Socket;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by John on 11/20/2014.
+ * Warning: this program does not take into account concurrent commands/FTP connections.
  */
 public class ServerConnection {
-    private static String serverIP = "127.0.0.1";
-    //TODO: private static server session variable
+    private static final String SERVER_IP = "127.0.0.1";
+    private static final Integer SERVER_MESSAGING_PORT = 7890;
+    private static final int SERVER_TIMEOUT = 10000;
+    private static final String SUCCESS_MESSAGE = "OK";
+    private static final String FAILURE_MESSAGE = "SORRY";
+
+    private static String loginUserName;
+    private static String loginPassword;
 
     /**
      * Returns true if new user successfully created on server
@@ -15,46 +42,80 @@ public class ServerConnection {
      */
     protected static boolean userCreate(String userName, String password)
     {
-        serverConnect();
-        /*
-        TODO: Send user credientials
-            Return true if user created
-            False otherwise
-         */
-        serverDisconnect();
-        return false;
+        //TODO: Send new user command and user credientials
+        String command = "newUser:" + userName + "," + password;
+
+        try {
+            String result = new ServerCommandTask().execute(command).get();
+            return result.contains(SUCCESS_MESSAGE);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        }
+
     }
 
     /**
-     * Returns true if operation is successful, false if user exists but no password, null if user
-     * does not exist
+     * Returns true if operation is successful, false if user exists but no password or server error
+     * , null if user does not exist
      * @param userName email address / user name to send to server
      * @param password password for user
-     * @return true if successful
+     * @return true if successful, false is incorrect or server didn't respond, null if user does
+     * not exist
      */
     protected static Boolean userLogin(String userName, String password)
     {
-        serverConnect();
-        //TODO: Send user credientials
-        serverDisconnect();
-        //TODO: return null if user does not exist, true if login successful, false otherwise
-        return null;
+        //Send user login command and user credientials
+        //return null if user does not exist, true if login successful, false otherwise
+        String command = "loginUser:" + userName + "," + password;
+
+        try {
+            String result = new ServerCommandTask().execute(command).get();
+            if(!result.contains(SUCCESS_MESSAGE) && !result.contains(FAILURE_MESSAGE))
+                return null;
+            return result.contains(SUCCESS_MESSAGE);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
+    /**
+     *
+     * @param userName
+     * @return true if password reset, false if server error or user does not exist
+     */
     protected static Boolean userPasswordReset(String userName)
     {
-        serverConnect();
-        //TODO: Send username and password reset command
-        serverDisconnect();
-        return false;
+        //Send password reset command and username
+        String command = "resetPassword:" + userName;
+        try {
+            String result = new ServerCommandTask().execute(command).get();
+            return result.contains(SUCCESS_MESSAGE);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
+    /**
+     *
+     * @param userName
+     * @param oldPassword
+     * @param newPassword
+     * @return true if password successfully changed, false if server error or incorrect oldPassword
+     */
     protected  static boolean userPasswordChange(String userName, String oldPassword, String newPassword)
     {
-        serverConnect();
-        //TODO: Send username, old password, new password, and password change command
-        serverDisconnect();
-        return false;
+        //TODO: Send password change command, username, old password, and new password
+        String command = "changePassword:" + userName + "," + oldPassword + "," + newPassword;
+        try {
+            String result = new ServerCommandTask().execute(command).get();
+            return result.contains(SUCCESS_MESSAGE);
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+            return false;
+        }
     }
 
     /**
@@ -62,12 +123,10 @@ public class ServerConnection {
      * connection error
      * @return true if successful
      */
-    protected static boolean fileUpload()
+    protected static void fileUpload(File file)
     {
-        serverConnect();
-        //TODO: Send file
-        serverDisconnect();
-        return false;
+        //Start file upload task
+        new UploadFileTask().execute(file);
     }
 
     /**
@@ -75,12 +134,11 @@ public class ServerConnection {
      * connection error
      * @return true if successful
      */
-    protected static boolean fileRename()
+    protected static void fileRename(String oldFileName, String newFileName)
     {
-        serverConnect();
-        //TODO: send old file name, new file name, & rename command
-        serverDisconnect();
-        return false;
+        //send rename file command, old file name, & new file name
+        String command = "rename:" + oldFileName + "," + newFileName;
+        new ServerCommandTask().execute(command);
     }
 
     /**
@@ -88,12 +146,11 @@ public class ServerConnection {
      * connection error
      * @return true if successful
      */
-    protected static boolean fileDelete()
+    protected static void fileDelete(String fileName)
     {
-        serverConnect();
-        //TODO: send file name & delete command
-        serverDisconnect();
-        return false;
+        //send delete command
+        String command = "deleteFile:" + fileName;
+        new ServerCommandTask().execute(command);
     }
 
     /**
@@ -101,31 +158,169 @@ public class ServerConnection {
      * connection error
      * @return true if successful
      */
-    protected static Object[] fileRestore()
+    protected static void fileRestore()
     {
-        serverConnect();
-        //TODO: send restore command
-        //TODO: read in object(s)
-        //TODO: restore objects to local database?? Or just return them?
-        serverDisconnect();
-        return null;
+        //start restore command
+        DownloadFilesTask download = new DownloadFilesTask();
+        download.execute();
     }
 
-    /**
-     * Returns true if operation is successful, false otherwise. False indicates server
-     * connection error
-     * @return true if successful
-     */
-    private static boolean serverConnect()
+    private static FTPClient ftpServerConnect()
     {
-        //TODO: Server connection logic here
-        FTPClient ftpClient = new FTPClient();
-        return false;
+        if(loginUserName == null || loginPassword == null)
+            return null;
+
+        boolean status = false;
+        try {
+            FTPClient mFtpClient = new FTPClient();
+            mFtpClient.setConnectTimeout(SERVER_TIMEOUT);
+            mFtpClient.connect(InetAddress.getByName(SERVER_IP));
+            status = mFtpClient.login(loginUserName, loginPassword);
+            Log.e("isFTPConnected", String.valueOf(status));
+            if (FTPReply.isPositiveCompletion(mFtpClient.getReplyCode())) {
+                mFtpClient.setFileType(FTP.ASCII_FILE_TYPE);
+                mFtpClient.enterLocalPassiveMode();
+                FTPFile[] mFileArray = mFtpClient.listFiles();
+                Log.e("Directory Size: ", String.valueOf(mFileArray.length));
+                return mFtpClient;
+            }
+            return null;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 
-    private static void serverDisconnect()
+    private static void ftpServerDisconnect(FTPClient ftpClient)
     {
-        //TODO: Server disconnect logic here
+
+        try {
+            ftpClient.logout();
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        try {
+            ftpClient.disconnect();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
+    private static class DownloadFilesTask extends AsyncTask<Void, Integer, Boolean> {
+        protected Boolean doInBackground(Void... params) {
+            //Download all the things!!!!!!
+            FTPClient mFTPClient = ftpServerConnect();
+            if(mFTPClient==null)
+                return false;
+
+            File parentDir = new File(loginUserName);
+            if (!parentDir.exists())
+                parentDir.mkdir();
+            OutputStream outputStream = null;
+            try {
+                FTPFile[] ftpFiles = mFTPClient.listFiles();
+                if(ftpFiles != null && ftpFiles.length > 0)
+                {
+                    for(int i = 0; i<ftpFiles.length; i++)
+                    {
+                        onProgressUpdate(i/ftpFiles.length);
+                        outputStream = new BufferedOutputStream(new FileOutputStream(ftpFiles[i].getName()));
+                        mFTPClient.retrieveFile(ftpFiles[i].getName(), outputStream);
+                        outputStream.close();
+                    }
+                    ftpServerDisconnect(mFTPClient);
+                    return true;
+                }
+            } catch (Exception ex) {
+                ex.printStackTrace();
+            } finally {
+                ftpServerDisconnect(mFTPClient);
+                if (outputStream != null) {
+                    try {
+                        outputStream.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            return false;
+        }
+
+        protected void onProgressUpdate(Integer... progress) {
+            //TODO: Update File Download Progress??
+        }
+
+        protected void onPostExecute(Void v) {
+
+        }
+    }
+
+    private static class UploadFileTask extends AsyncTask<File, Integer, Boolean> {
+        protected Boolean doInBackground(File... params) {
+
+            //Upload one of the things!!!!!!
+
+            FTPClient mFTPClient = ftpServerConnect();
+            if(mFTPClient==null)
+                return false;
+
+            try {
+                FileInputStream srcFileStream = new FileInputStream(params[0]);
+                boolean status = mFTPClient.storeFile("",
+                        srcFileStream);
+                Log.e("Status", String.valueOf(status));
+                srcFileStream.close();
+                ftpServerDisconnect(mFTPClient);
+                return status;
+            } catch (Exception e) {
+                e.printStackTrace();
+                ftpServerDisconnect(mFTPClient);
+                return false;
+            }
+        }
+
+        protected void onProgressUpdate(Integer... progress) {
+            //TODO: Update File Download Progress??
+        }
+
+        protected void onPostExecute(Void v) {
+
+        }
+    }
+
+    private static class ServerCommandTask extends AsyncTask<String, Void, String> {
+        protected String doInBackground(String... params) {
+            //TODO: Command all the things!!!!!!
+            String output = "";
+            Socket socket;
+            try {
+                socket = new Socket(SERVER_IP, SERVER_MESSAGING_PORT);
+                if (socket != null) {
+                    BufferedReader reader = new BufferedReader(
+                            new InputStreamReader(socket.getInputStream()));
+
+                   BufferedWriter writer = new BufferedWriter(
+                            new OutputStreamWriter(socket.getOutputStream()));
+
+                    writer.write(params[0]+"\n");
+                    writer.flush();
+                    output = reader.readLine();
+                    socket.close();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            } finally {
+                return output;
+            }
+        }
+
+        protected void onProgressUpdate(Void... progress) {
+
+        }
+
+        protected void onPostExecute(String response) {
+
+        }
+    }
 }
