@@ -271,7 +271,11 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
             else if(userLoginResult == 0)  {
                 //TODO: Create Password PROMPTING to create new account
-                return ServerConnection.userCreate(mEmail, mPassword);
+                if(ServerConnection.userCreate(mEmail, mPassword)){
+                    getDir(mEmail.toLowerCase(), MODE_PRIVATE);
+                    return true;
+                }
+                return false;
             }
 
             else {

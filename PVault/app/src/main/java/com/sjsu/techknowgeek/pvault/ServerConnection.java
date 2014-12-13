@@ -1,5 +1,6 @@
 package com.sjsu.techknowgeek.pvault;
 
+import android.app.Activity;
 import android.os.AsyncTask;
 import android.util.Log;
 
@@ -26,7 +27,7 @@ import java.util.concurrent.ExecutionException;
  * Created by John on 11/20/2014.
  * Warning: this program does not take into account concurrent commands/FTP connections.
  */
-public class ServerConnection {
+public class ServerConnection{
     private static final String SERVER_IP = "192.168.0.102";
     private static final Integer SERVER_MESSAGING_PORT = 7890;
     private static final int SERVER_TIMEOUT = 10000;
@@ -52,7 +53,7 @@ public class ServerConnection {
         String result = sendCommand(command);
         if(result.contains(SUCCESS_MESSAGE))
         {
-            loginUserName = userName;
+            loginUserName = userName.toLowerCase();
             loginPassword = password;
             return true;
         }
@@ -77,8 +78,11 @@ public class ServerConnection {
         System.out.println(result);
         if(result == null || result.contains(FAILURE_MESSAGE))
             return -1;
-        if(result.contains(SUCCESS_MESSAGE))
+        if(result.contains(SUCCESS_MESSAGE)) {
+            loginUserName = userName.toLowerCase();
+            loginPassword = password;
             return 1;
+        }
         return 0;
     }
 
