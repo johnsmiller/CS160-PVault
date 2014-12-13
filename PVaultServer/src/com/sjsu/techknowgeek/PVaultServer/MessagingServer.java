@@ -89,10 +89,9 @@ public class MessagingServer implements Runnable{
                     ret = resetPassword();
                 } else if (message.contains("changePassword")) {
                    ret = changePassword();
-                }                 
-                ret += ".\n";
+                }        
                 System.out.println("Sending: " + ret + " to the client");
-                writer.write(ret);
+                writer.write(ret+"\n");
                 writer.flush();
                 System.out.println("Sent");
 
@@ -130,6 +129,8 @@ public class MessagingServer implements Runnable{
         String password = message.substring(delimiter+1);
         
         try {
+            if(!Model.getInstance().isUser(user))
+                return "NO_SUCH_USER";
             return (Model.getInstance().loginUser(user, password))? SUCCESS_MESSAGE : FAILURE_MESSAGE;
         } catch (FtpException ex) {
             System.out.println("Model's Login User Encountered an FTP Error: " + ex.getLocalizedMessage());

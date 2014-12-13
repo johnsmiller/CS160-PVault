@@ -27,7 +27,7 @@ import java.util.concurrent.ExecutionException;
  * Warning: this program does not take into account concurrent commands/FTP connections.
  */
 public class ServerConnection {
-    private static final String SERVER_IP = "127.0.0.1";
+    private static final String SERVER_IP = "192.168.0.102";
     private static final Integer SERVER_MESSAGING_PORT = 7890;
     private static final int SERVER_TIMEOUT = 10000;
     private static final String SUCCESS_MESSAGE = "OK";
@@ -44,46 +44,37 @@ public class ServerConnection {
     {
         //TODO: Send new user command and user credientials
         String command = "newUser:" + userName + "," + password;
-
-        try {
-            String result = new ServerCommandTask().execute(command).get();
-            if(result.contains(SUCCESS_MESSAGE))
-            {
-                loginUserName = userName;
-                loginPassword = password;
-                return true;
-            }
-            return false;
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-            return false;
+        String result = sendCommand(command);
+        if(result.contains(SUCCESS_MESSAGE))
+        {
+            loginUserName = userName;
+            loginPassword = password;
+            return true;
         }
-
+        return false;
     }
 
     /**
-     * Returns true if operation is successful, false if user exists but no password or server error
-     * , null if user does not exist
+     * Returns 1 if successful, -1 is incorrect or server didn't respond, 0 if user does
+     * not exist
      * @param userName email address / user name to send to server
      * @param password password for user
-     * @return true if successful, false is incorrect or server didn't respond, null if user does
+     * @return 1 if successful, -1 is incorrect or server didn't respond, 0 if user does
      * not exist
      */
-    protected static Boolean userLogin(String userName, String password)
+    protected static int userLogin(String userName, String password)
     {
         //Send user login command and user credientials
         //return null if user does not exist, true if login successful, false otherwise
         String command = "loginUser:" + userName + "," + password;
-
-        try {
-            String result = new ServerCommandTask().execute(command).get();
-            if(!result.contains(SUCCESS_MESSAGE) && !result.contains(FAILURE_MESSAGE))
-                return null;
-            return result.contains(SUCCESS_MESSAGE);
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-            return false;
-        }
+        System.out.println(command);
+        String result = sendCommand(command);
+        System.out.println(result);
+        if(result == null || result.contains(FAILURE_MESSAGE))
+            return -1;
+        if(result.contains(SUCCESS_MESSAGE))
+            return 1;
+        return 0;
     }
 
     /**
@@ -95,13 +86,8 @@ public class ServerConnection {
     {
         //Send password reset command and username
         String command = "resetPassword:" + userName;
-        try {
-            String result = new ServerCommandTask().execute(command).get();
-            return result.contains(SUCCESS_MESSAGE);
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-            return false;
-        }
+        String result = sendCommand(command);
+        return result.contains(SUCCESS_MESSAGE);
     }
 
     /**
@@ -113,7 +99,7 @@ public class ServerConnection {
      */
     protected  static boolean userPasswordChange(String userName, String oldPassword, String newPassword)
     {
-        //TODO: Send password change command, username, old password, and new password
+        //Send password change command, username, old password, and new password
         String command = "changePassword:" + userName + "," + oldPassword + "," + newPassword;
         try {
             String result = new ServerCommandTask().execute(command).get();
@@ -229,7 +215,7 @@ public class ServerConnection {
                     for(int i = 0; i<ftpFiles.length; i++)
                     {
                         onProgressUpdate(i/ftpFiles.length);
-                        outputStream = new BufferedOutputStream(new FileOutputStream(ftpFiles[i].getName()));
+                        outputStream = new BufferedOutputStream(new FileOutputStream(loginUserName + "/" + ftpFiles[i].getName()));
                         mFTPClient.retrieveFile(ftpFiles[i].getName(), outputStream);
                         outputStream.close();
                     }
@@ -336,11 +322,14 @@ public class ServerConnection {
 
     private static class ServerCommandTask extends AsyncTask<String, Void, String> {
         protected String doInBackground(String... params) {
-            //TODO: Command all the things!!!!!!
+            //Command all the things!!!!!!
+            System.out.println("Command Beginning Execution");
             String output = "";
             Socket socket;
             try {
+                System.out.println("Creating Socket");
                 socket = new Socket(SERVER_IP, SERVER_MESSAGING_PORT);
+                System.out.println("Socket Created");
                 if (socket != null) {
                     BufferedReader reader = new BufferedReader(
                             new InputStreamReader(socket.getInputStream()));
@@ -348,11 +337,16 @@ public class ServerConnection {
                    BufferedWriter writer = new BufferedWriter(
                             new OutputStreamWriter(socket.getOutputStream()));
 
+                    System.out.println("Writing to Socket");
                     writer.write(params[0]+"\n");
                     writer.flush();
+                    System.out.println("Wrote to Socket");
                     output = reader.readLine();
+                    System.out.println("Read from Socket");
                     socket.close();
-                }
+                    System.out.println("Closed Socket");
+                } else
+                    System.out.println("Socket was null!");
             } catch (Exception e) {
                 e.printStackTrace();
             } finally {
@@ -367,5 +361,37 @@ public class ServerConnection {
         protected void onPostExecute(String response) {
 
         }
+    }
+
+
+    private static String sendCommand(String command) {
+        System.out.println("Command Beginning Execution");
+        String result = null;
+        Socket socket;
+        try {
+            System.out.println("Creating Socket");
+            socket = new Socket(SERVER_IP, SERVER_MESSAGING_PORT);
+            System.out.println("Socket Created");
+            if (socket != null) {
+                BufferedReader reader = new BufferedReader(
+                        new InputStreamReader(socket.getInputStream()));
+
+                BufferedWriter writer = new BufferedWriter(
+                        new OutputStreamWriter(socket.getOutputStream()));
+
+                System.out.println("Writing to Socket");
+                writer.write(command+"\n");
+                writer.flush();
+                System.out.println("Wrote to Socket");
+                result = reader.readLine();
+                System.out.println("Read from Socket");
+                socket.close();
+                System.out.println("Closed Socket");
+            } else
+                System.out.println("Socket was null!");
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return result;
     }
 }

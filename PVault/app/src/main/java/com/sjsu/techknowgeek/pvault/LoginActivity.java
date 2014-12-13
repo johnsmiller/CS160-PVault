@@ -101,7 +101,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         // Store values at the time of the login attempt.
         String email = mEmailView.getText().toString();
-        String password = mPasswordView.getText().toString();
+        String password = /*SealObject.encryptPass(*/mPasswordView.getText().toString();
 
         boolean cancel = false;
         View focusView = null;
@@ -254,15 +254,15 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            Boolean userLoginResult = null;
+            int userLoginResult;
 
-            if((userLoginResult = ServerConnection.userLogin(mEmail, mPassword))) { //return (ServerConnection.userLogin(mEmail, mPassword) || userCreate(mEmail, mPassword));
+            if((userLoginResult = ServerConnection.userLogin(mEmail, mPassword))==1) { //return (ServerConnection.userLogin(mEmail, mPassword) || userCreate(mEmail, mPassword));
                 return true;
             }
 
-            else if(userLoginResult == null && ServerConnection.userCreate(mEmail, mPassword))  {
-                //TODO: Create Password PROMPT if Account does not exist
-                return true;
+            else if(userLoginResult == 0)  {
+                //TODO: Create Password PROMPTING to create new account
+                return ServerConnection.userCreate(mEmail, mPassword);
             }
 
             else {
