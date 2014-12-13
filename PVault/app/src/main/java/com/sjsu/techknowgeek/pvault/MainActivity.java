@@ -44,5 +44,20 @@ public class MainActivity extends Activity {
         }
 
         return super.onOptionsItemSelected(item);
+
+    }
+
+    @Override
+    public void onPause()
+    {
+        super.onPause();
+        this.finish();
+    }
+
+    @Override
+    public void onStop()
+    {
+        super.onStop();
+        this.finish();
     }
 }

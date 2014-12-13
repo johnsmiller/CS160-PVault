@@ -7,6 +7,7 @@ import android.app.Activity;
 import android.app.LoaderManager.LoaderCallbacks;
 import android.content.ContentResolver;
 import android.content.CursorLoader;
+import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
 import android.net.Uri;
@@ -25,6 +26,8 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+
+import com.google.android.gms.internal.in;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -101,7 +104,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         // Store values at the time of the login attempt.
         String email = mEmailView.getText().toString();
-        String password = /*SealObject.encryptPass(*/mPasswordView.getText().toString();
+        String password = SealObject.encryptPass(mPasswordView.getText().toString());
 
         boolean cancel = false;
         View focusView = null;
@@ -238,6 +241,12 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         mEmailView.setAdapter(adapter);
     }
 
+    private void startMainActivity()
+    {
+        Intent intent = new Intent(this, MainActivity.class);
+        startActivity(intent);
+    }
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
@@ -278,6 +287,12 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             showProgress(false);
 
             if (success) {
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        startMainActivity();
+                    }
+                });
                 finish();
             } else {
                 mPasswordView.setError(getString(R.string.error_incorrect_password));

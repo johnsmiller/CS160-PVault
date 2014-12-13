@@ -36,6 +36,11 @@ public class ServerConnection {
     private static String loginUserName;
     private static String loginPassword;
 
+    protected static String getUserName()
+    {
+        return loginUserName;
+    }
+
     /**
      * Returns true if new user successfully created on server
      * @return true if new user created, false if user exists or server error
