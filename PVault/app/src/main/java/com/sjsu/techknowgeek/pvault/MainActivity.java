@@ -13,12 +13,14 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v7.internal.view.menu.ListMenuItemView;
+import android.text.InputType;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ListView;
 import android.widget.SearchView;
 import android.widget.Toast;
@@ -90,7 +92,6 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
                             renameItemDialog(position);
                         else if(which == 1)
                             deleteItemDialog(position);
-                        updateListView(null);
                     }
                 });
         builder.create().show();
@@ -99,8 +100,43 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
     private void renameItemDialog(int position)
     {
-        Object obj = getListView().getItemAtPosition(position);
-        System.out.println("Rename " + obj.toString());
+        final Object obj = getListView().getItemAtPosition(position);
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Please enter the new file name")
+        .setMessage("File associations (ex: .jpg) are kept automatically");
+
+        // Set up the input
+        final EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_TEXT);
+        builder.setView(input);
+
+        // Set up the buttons
+        builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //maintain file type
+                String strIn = input.getText().toString() + obj.toString().substring(obj.toString().lastIndexOf("."));
+                if(strIn == null || strIn.length()<=0 || new File(userDir, strIn).exists())
+                {
+                    //TODO: Error Message
+                    System.out.println("Error encountered with rename");
+                } else {
+                    File curFile = new File(userDir, obj.toString());
+                    File newFile = new File(userDir, strIn);
+                    curFile.renameTo(newFile);
+                    ServerConnection.fileRename(curFile.getName(), newFile.getName());
+                    updateListView(null);
+                }
+            }
+        }).setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+
+        builder.show();
+        input.requestFocus();
     }
 
     private void deleteItemDialog(int position)
