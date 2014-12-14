@@ -4,9 +4,12 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.LoaderManager.LoaderCallbacks;
 import android.content.ContentResolver;
+import android.content.Context;
 import android.content.CursorLoader;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
 import android.database.Cursor;
@@ -15,6 +18,7 @@ import android.os.AsyncTask;
 
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Looper;
 import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.view.KeyEvent;
@@ -26,6 +30,7 @@ import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.google.android.gms.internal.in;
 
@@ -136,7 +141,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            mAuthTask = new UserLoginTask(email, password);
+            mAuthTask = new UserLoginTask(email, password, this);
             mAuthTask.execute((Void) null);
         }
     }
@@ -247,50 +252,82 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         startActivity(intent);
     }
 
+    private void showForgotPasswordDialog(final String mEmail) {
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Forgot Password?");
+        builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                if(ServerConnection.userPasswordReset(mEmail)) {
+                    Toast.makeText(getApplicationContext(), "SUCCESS! Check your email", Toast.LENGTH_LONG).show();
+                }
+                else {
+                    Toast.makeText(getApplicationContext(), "ERROR: User does not exist or server error. Check your internet.", Toast.LENGTH_LONG).show();
+                }
+                dialog.dismiss();
+            }
+        });
+
+        builder.setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                dialog.dismiss();
+            }
+        });
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
      */
-    public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
+    public class UserLoginTask extends AsyncTask<Void, Void, Integer> {
 
         private final String mEmail;
         private final String mPassword;
+        private final LoginActivity context;
 
         UserLoginTask(String email, String password) {
             mEmail = email;
             mPassword = password;
+            context = null;
+        }
+
+        UserLoginTask(String email, String password, LoginActivity cont) {
+            mEmail = email;
+            mPassword = password;
+            context = cont;
+
         }
 
         @Override
-        protected Boolean doInBackground(Void... params) {
+        protected Integer doInBackground(Void... params) {
             int userLoginResult;
 
-            if((userLoginResult = ServerConnection.userLogin(mEmail, mPassword))==1) { //return (ServerConnection.userLogin(mEmail, mPassword) || userCreate(mEmail, mPassword));
-                return true;
+            if(mPassword==null || mPassword.length()==0)
+            {
+                return 0; //new user account requested
             }
 
-            else if(userLoginResult == 0)  {
-                //TODO: Create Password PROMPTING to create new account
-                if(ServerConnection.userCreate(mEmail, mPassword)){
-                    getDir(mEmail.toLowerCase(), MODE_PRIVATE);
-                    return true;
-                }
-                return false;
+            else if((userLoginResult = ServerConnection.userLogin(mEmail, mPassword))==1) { //return (ServerConnection.userLogin(mEmail, mPassword) || userCreate(mEmail, mPassword));
+                return 1; //login successful
             }
 
-            else {
-                //TODO: if(Forgot password prompt), ServerConnection.userPasswordReset(mEmail)
-                return false;
+            else if(userLoginResult == 0)  { //User does not exist
+                return -2;
+            }
+
+            else { //user exists, bad password
+                return -1;
             }
 
         }
 
         @Override
-        protected void onPostExecute(final Boolean success) {
+        protected void onPostExecute(final Integer success) {
             mAuthTask = null;
             showProgress(false);
 
-            if (success) {
+            if (success == 1) {
                 runOnUiThread(new Runnable() {
                     @Override
                     public void run() {
@@ -298,9 +335,28 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
                     }
                 });
                 finish();
-            } else {
+            } else if (success == -1) { //User exists, but bad password
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        showForgotPasswordDialog(mEmail);
+                    }
+                });
                 mPasswordView.setError(getString(R.string.error_incorrect_password));
                 mPasswordView.requestFocus();
+            } else if (success == -2) {//User does not exist, but a password was entered
+                mEmailView.setError(getString(R.string.error_bad_email));
+                mEmailView.requestFocus();
+            } else {
+                //new user requested
+                //TODO: create new user prompt (enter password twice)
+                //String newPassword
+                /*
+                if(ServerConnection.userCreate(mEmail, newPassword)){
+                    getDir(mEmail.toLowerCase(), MODE_PRIVATE);
+                    return true;
+                }
+                 */
             }
         }
 

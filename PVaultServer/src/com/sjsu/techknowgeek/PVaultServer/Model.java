@@ -82,7 +82,7 @@ public class Model {
         String password = "";
         for(int i = 0; i < RESET_PASSWORD_LENGTH; i++)
         {
-            password += Math.floor(Math.random()*10);
+            password += Math.round(Math.random()*10);
         }
         
         updateFtpUser(username, SealObject.encryptPass(password));

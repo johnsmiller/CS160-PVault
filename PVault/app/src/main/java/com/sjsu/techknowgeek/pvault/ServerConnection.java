@@ -2,6 +2,7 @@ package com.sjsu.techknowgeek.pvault;
 
 import android.app.Activity;
 import android.os.AsyncTask;
+import android.os.Looper;
 import android.util.Log;
 
 import org.apache.commons.net.ftp.FTP;
@@ -9,6 +10,7 @@ import org.apache.commons.net.ftp.FTPClient;
 import org.apache.commons.net.ftp.FTPFile;
 import org.apache.commons.net.ftp.FTPReply;
 
+import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
@@ -48,7 +50,7 @@ public class ServerConnection{
      */
     protected static boolean userCreate(String userName, String password)
     {
-        //TODO: Send new user command and user credientials
+        //Send new user command and user credientials
         String command = "newUser:" + userName + "," + password;
         String result = sendCommand(command);
         if(result.contains(SUCCESS_MESSAGE))
@@ -73,9 +75,8 @@ public class ServerConnection{
         //Send user login command and user credientials
         //return null if user does not exist, true if login successful, false otherwise
         String command = "loginUser:" + userName + "," + password;
-        System.out.println(command);
         String result = sendCommand(command);
-        System.out.println(result);
+
         if(result == null || result.contains(FAILURE_MESSAGE))
             return -1;
         if(result.contains(SUCCESS_MESSAGE)) {
@@ -83,7 +84,7 @@ public class ServerConnection{
             loginPassword = password;
             return 1;
         }
-        return 0;
+        return 0; //Non-standard error message sent, assume user does not exist on server
     }
 
     /**
@@ -96,7 +97,7 @@ public class ServerConnection{
         //Send password reset command and username
         String command = "resetPassword:" + userName;
         String result = sendCommand(command);
-        return result.contains(SUCCESS_MESSAGE);
+        return (result != null) && result.contains(SUCCESS_MESSAGE);
     }
 
     /**
@@ -110,13 +111,8 @@ public class ServerConnection{
     {
         //Send password change command, username, old password, and new password
         String command = "changePassword:" + userName + "," + oldPassword + "," + newPassword;
-        try {
-            String result = new ServerCommandTask().execute(command).get();
-            return result.contains(SUCCESS_MESSAGE);
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
-            return false;
-        }
+        String result = sendCommand(command);
+        return (result != null) && result.contains(SUCCESS_MESSAGE);
     }
 
     /**
@@ -157,11 +153,11 @@ public class ServerConnection{
      * connection error
      * @return true if successful
      */
-    protected static void fileRestore()
+    protected static void fileRestore(File parentDirectory)
     {
         //start restore command
         DownloadFilesTask download = new DownloadFilesTask();
-        download.execute();
+        download.execute(parentDirectory);
     }
 
     private static FTPClient ftpServerConnect()
@@ -175,12 +171,12 @@ public class ServerConnection{
             mFtpClient.setConnectTimeout(SERVER_TIMEOUT);
             mFtpClient.connect(InetAddress.getByName(SERVER_IP));
             status = mFtpClient.login(loginUserName, loginPassword);
-            Log.e("isFTPConnected", String.valueOf(status));
+            Log.i("isFTPConnected", String.valueOf(status));
             if (FTPReply.isPositiveCompletion(mFtpClient.getReplyCode())) {
                 mFtpClient.setFileType(FTP.ASCII_FILE_TYPE);
                 mFtpClient.enterLocalPassiveMode();
                 FTPFile[] mFileArray = mFtpClient.listFiles();
-                Log.e("Directory Size: ", String.valueOf(mFileArray.length));
+                Log.i("Directory Size: ", String.valueOf(mFileArray.length));
                 return mFtpClient;
             }
             return null;
@@ -195,25 +191,24 @@ public class ServerConnection{
 
         try {
             ftpClient.logout();
-
         } catch (IOException e) {
-            e.printStackTrace();
+
         }
         try {
             ftpClient.disconnect();
         } catch (IOException e) {
-            e.printStackTrace();
+
         }
     }
 
-    private static class DownloadFilesTask extends AsyncTask<Void, Integer, Boolean> {
-        protected Boolean doInBackground(Void... params) {
+    private static class DownloadFilesTask extends AsyncTask<File, Integer, Boolean> {
+        protected Boolean doInBackground(File... params) {
             //Download all the things!!!!!!
             FTPClient mFTPClient = ftpServerConnect();
             if(mFTPClient==null)
                 return false;
 
-            File parentDir = new File(loginUserName);
+            File parentDir = params[0];
             if (!parentDir.exists())
                 parentDir.mkdir();
             OutputStream outputStream = null;
@@ -224,22 +219,23 @@ public class ServerConnection{
                     for(int i = 0; i<ftpFiles.length; i++)
                     {
                         onProgressUpdate(i/ftpFiles.length);
-                        outputStream = new BufferedOutputStream(new FileOutputStream(loginUserName + "/" + ftpFiles[i].getName()));
+                        outputStream = new BufferedOutputStream(new FileOutputStream(parentDir + "/" + ftpFiles[i].getName()));
                         mFTPClient.retrieveFile(ftpFiles[i].getName(), outputStream);
                         outputStream.close();
                     }
+                    Log.i("Download Files", "FTP Command Completed Successfully");
                     ftpServerDisconnect(mFTPClient);
                     return true;
                 }
             } catch (Exception ex) {
-                ex.printStackTrace();
+                Log.e("Download Files", "FTP Command encountered an error");
             } finally {
                 ftpServerDisconnect(mFTPClient);
                 if (outputStream != null) {
                     try {
                         outputStream.close();
                     } catch (IOException e) {
-                        e.printStackTrace();
+
                     }
                 }
             }
@@ -250,8 +246,8 @@ public class ServerConnection{
             //TODO: Update File Download Progress??
         }
 
-        protected void onPostExecute(Void v) {
-
+        protected void onPostExecute(Boolean v) {
+            MainActivity.refreshViewFromStaticContext();
         }
     }
 
@@ -265,15 +261,17 @@ public class ServerConnection{
                 return false;
 
             try {
-                FileInputStream srcFileStream = new FileInputStream(params[0]);
-                boolean status = mFTPClient.storeFile("",
+                BufferedInputStream srcFileStream = new BufferedInputStream( new FileInputStream(params[0]));
+                mFTPClient.setFileType(FTPClient.BINARY_FILE_TYPE);
+                boolean status = mFTPClient.storeUniqueFile(params[0].getName(),
                         srcFileStream);
                 Log.e("Status", String.valueOf(status));
                 srcFileStream.close();
                 ftpServerDisconnect(mFTPClient);
+                Log.i("Upload Files", "FTP Command Completed Successfully");
                 return status;
             } catch (Exception e) {
-                e.printStackTrace();
+                Log.e("Upload Files", "FTP Command encountered an error");
                 ftpServerDisconnect(mFTPClient);
                 return false;
             }
@@ -301,12 +299,13 @@ public class ServerConnection{
                 boolean status = false;
                 if(params.length==1) //delete command
                     status = mFTPClient.deleteFile(params[0]);
-                else if(params.length==2)
+                else if(params.length==2) //rename command
                     status = mFTPClient.rename(params[0], params[1]);
                 ftpServerDisconnect(mFTPClient);
+                Log.i("Modify Files", "FTP Command Completed Successfully");
                 return status;
             } catch (Exception ex) {
-                ex.printStackTrace();
+                Log.e("Modify Files", "FTP Encountered an error");
             } finally {
                 ftpServerDisconnect(mFTPClient);
                 if (outputStream != null) {
@@ -332,35 +331,7 @@ public class ServerConnection{
     private static class ServerCommandTask extends AsyncTask<String, Void, String> {
         protected String doInBackground(String... params) {
             //Command all the things!!!!!!
-            System.out.println("Command Beginning Execution");
-            String output = "";
-            Socket socket;
-            try {
-                System.out.println("Creating Socket");
-                socket = new Socket(SERVER_IP, SERVER_MESSAGING_PORT);
-                System.out.println("Socket Created");
-                if (socket != null) {
-                    BufferedReader reader = new BufferedReader(
-                            new InputStreamReader(socket.getInputStream()));
-
-                   BufferedWriter writer = new BufferedWriter(
-                            new OutputStreamWriter(socket.getOutputStream()));
-
-                    System.out.println("Writing to Socket");
-                    writer.write(params[0]+"\n");
-                    writer.flush();
-                    System.out.println("Wrote to Socket");
-                    output = reader.readLine();
-                    System.out.println("Read from Socket");
-                    socket.close();
-                    System.out.println("Closed Socket");
-                } else
-                    System.out.println("Socket was null!");
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                return output;
-            }
+            return sendCommand(params[0]);
         }
 
         protected void onProgressUpdate(Void... progress) {
@@ -374,13 +345,23 @@ public class ServerConnection{
 
 
     private static String sendCommand(String command) {
-        System.out.println("Command Beginning Execution");
         String result = null;
+
+        if(Looper.getMainLooper().getThread() == Thread.currentThread())
+        {
+            try {
+                result = new ServerCommandTask().execute(command).get();
+
+            } catch (InterruptedException | ExecutionException e) {
+
+            } finally {
+                return result;
+            }
+        }
+
         Socket socket;
         try {
-            System.out.println("Creating Socket");
             socket = new Socket(SERVER_IP, SERVER_MESSAGING_PORT);
-            System.out.println("Socket Created");
             if (socket != null) {
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(socket.getInputStream()));
@@ -388,18 +369,15 @@ public class ServerConnection{
                 BufferedWriter writer = new BufferedWriter(
                         new OutputStreamWriter(socket.getOutputStream()));
 
-                System.out.println("Writing to Socket");
                 writer.write(command+"\n");
                 writer.flush();
-                System.out.println("Wrote to Socket");
                 result = reader.readLine();
-                System.out.println("Read from Socket");
                 socket.close();
-                System.out.println("Closed Socket");
+                Log.i("Command", "Server Command Completed Successfully");
             } else
-                System.out.println("Socket was null!");
+                Log.e("Socket", "Socket was null!");
         } catch (Exception e) {
-            e.printStackTrace();
+
         }
         return result;
     }
