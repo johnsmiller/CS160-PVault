@@ -82,7 +82,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
      */
     @Override
     public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
-        //TODO: Display options menu
+        //Display options menu
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         String[] options = {"Rename File", "Delete File"};
         builder.setTitle(R.string.file_options)

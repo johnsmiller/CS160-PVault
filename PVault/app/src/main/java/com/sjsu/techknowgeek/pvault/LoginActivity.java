@@ -20,6 +20,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Looper;
 import android.provider.ContactsContract;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.View;
@@ -29,11 +30,13 @@ import android.widget.ArrayAdapter;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.internal.in;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -109,7 +112,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         // Store values at the time of the login attempt.
         String email = mEmailView.getText().toString();
-        String password = SealObject.encryptPass(mPasswordView.getText().toString());
+        String password = mPasswordView.getText().toString();
 
         boolean cancel = false;
         View focusView = null;
@@ -121,6 +124,9 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             focusView = mPasswordView;
             cancel = true;
         }
+
+        //Encrypt password if not blank
+        password = (TextUtils.isEmpty(password))? "" : SealObject.encryptPass(password);
 
         // Check for a valid email address.
         if (TextUtils.isEmpty(email)) {
@@ -276,6 +282,59 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         dialog.show();
     }
 
+    private void showNewUserPasswordPrompt(final String mEmail) {
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Please enter your new password")
+                .setMessage("Enter password in twice");
+
+        // Set up the input
+        LinearLayout linearLayout= new LinearLayout(this);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+
+        final EditText pass1 = new EditText(this);
+        pass1.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        linearLayout.addView(pass1);
+
+        final EditText pass2 = new EditText(this);
+        pass2.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        linearLayout.addView(pass2);
+
+        builder.setView(linearLayout);
+
+        // Set up the buttons
+        builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //Get Passwords
+                String passStr1 = SealObject.encryptPass(pass1.getText().toString());
+                String passStr2 = SealObject.encryptPass(pass2.getText().toString());
+
+                if(passStr1 == null || !passStr1.equals(passStr2) || !isPasswordValid(passStr1))
+                {
+                    Toast.makeText(getApplicationContext(), "Error: password is invalid", Toast.LENGTH_LONG).show();
+                } else {
+                    if(ServerConnection.userCreate(mEmail, passStr1)){
+                        getDir(mEmail.toLowerCase(), MODE_PRIVATE);
+                        Toast.makeText(getApplicationContext(), "Success! Please log in", Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(getApplicationContext(), "A server error occurred. Connect to the internet and try again.", Toast.LENGTH_LONG).show();
+                    }
+                }
+                //dialog.dismiss();
+            }
+        }).setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //dialog.dismiss();
+            }
+        });
+
+        builder.show();
+        pass1.requestFocus();
+    }
+
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
@@ -326,36 +385,41 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             mAuthTask = null;
             showProgress(false);
 
-            if (success == 1) {
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        startMainActivity();
-                    }
-                });
-                finish();
-            } else if (success == -1) { //User exists, but bad password
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        showForgotPasswordDialog(mEmail);
-                    }
-                });
-                mPasswordView.setError(getString(R.string.error_incorrect_password));
-                mPasswordView.requestFocus();
-            } else if (success == -2) {//User does not exist, but a password was entered
-                mEmailView.setError(getString(R.string.error_bad_email));
-                mEmailView.requestFocus();
-            } else {
-                //new user requested
-                //TODO: create new user prompt (enter password twice)
-                //String newPassword
-                /*
-                if(ServerConnection.userCreate(mEmail, newPassword)){
-                    getDir(mEmail.toLowerCase(), MODE_PRIVATE);
-                    return true;
-                }
-                 */
+            switch (success) {
+                case 1:
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            startMainActivity();
+                        }
+                    });
+                    finish();
+                    break;
+
+                case -1: //User exists, but bad password
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            showForgotPasswordDialog(mEmail);
+                        }
+                    });
+                    mPasswordView.setError(getString(R.string.error_incorrect_password));
+                    mPasswordView.requestFocus();
+                    break;
+
+                case -2: //User does not exist, but a password was entered
+                    mEmailView.setError(getString(R.string.error_bad_email));
+                    mEmailView.requestFocus();
+                    break;
+                case 0:
+                    //new user requested
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            showNewUserPasswordPrompt(mEmail);
+                        }
+                    });
+                    break;
             }
         }
 

@@ -53,7 +53,7 @@ public class ServerConnection{
         //Send new user command and user credientials
         String command = "newUser:" + userName + "," + password;
         String result = sendCommand(command);
-        if(result.contains(SUCCESS_MESSAGE))
+        if(result != null && result.contains(SUCCESS_MESSAGE))
         {
             loginUserName = userName.toLowerCase();
             loginPassword = password;
@@ -175,6 +175,8 @@ public class ServerConnection{
             if (FTPReply.isPositiveCompletion(mFtpClient.getReplyCode())) {
                 mFtpClient.setFileType(FTP.ASCII_FILE_TYPE);
                 mFtpClient.enterLocalPassiveMode();
+                if(!mFtpClient.changeWorkingDirectory("/"))
+                    mFtpClient.makeDirectory("/");
                 FTPFile[] mFileArray = mFtpClient.listFiles();
                 Log.i("Directory Size: ", String.valueOf(mFileArray.length));
                 return mFtpClient;
