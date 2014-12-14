@@ -307,7 +307,6 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             {
                 return 0; //new user account requested
             }
-
             else if((userLoginResult = ServerConnection.userLogin(mEmail, mPassword))==1) { //return (ServerConnection.userLogin(mEmail, mPassword) || userCreate(mEmail, mPassword));
                 return 1; //login successful
             }

@@ -2,9 +2,11 @@ package com.sjsu.techknowgeek.pvault;
 
 import android.app.ActionBar;
 import android.app.Activity;
+import android.app.AlertDialog;
 import android.app.ListActivity;
 import android.app.SearchManager;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.net.Uri;
 import android.os.Bundle;
@@ -15,6 +17,7 @@ import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.SearchView;
@@ -32,7 +35,7 @@ import java.util.ArrayList;
 import java.util.Date;
 
 
-public class MainActivity extends ListActivity implements SearchView.OnQueryTextListener{
+public class MainActivity extends ListActivity implements SearchView.OnQueryTextListener, SearchManager.OnDismissListener, AdapterView.OnItemLongClickListener {
 
     private static final int REQUEST_TAKE_PHOTO = 1;
     private static final int TIMEOUT_MILI = 300000;
@@ -40,14 +43,94 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     private static Long Last_Sys_Time;
     private static MainActivity curInstance;
     private static File Most_Recent_Photo_File;
-    private static String curQuery;
+    private static SearchView searchView;
 
     File userDir;
+
+    /*
+    LIST ITEM METHODS BEGIN
+     */
+
+    /**
+     * This method will be called when an item in the list is selected.
+     * Subclasses should override. Subclasses can call getListView().getItemAtPosition(position)
+     * if they need to access the data associated with the selected item.
+     *
+     * @param l	The ListView where the click happened
+     * @param v	The view that was clicked within the ListView
+     * @param position	The position of the view in the list
+     * @param id	The row id of the item that was clicked
+     */
 
     @Override
     protected void onListItemClick (ListView l, View v, int position, long id) {
         Toast.makeText(this, "Clicked row " + position, Toast.LENGTH_SHORT).show();
+        //TODO: Show picture
     }
+
+    /**
+     * Callback method to be invoked when an item in this view has been
+     * clicked and held.
+     *
+     * @param parent   The AbsListView where the click happened
+     * @param view     The view within the AbsListView that was clicked
+     * @param position The position of the view in the list
+     * @param id       The row id of the item that was clicked
+     * @return true if the callback consumed the long click, false otherwise
+     */
+    @Override
+    public boolean onItemLongClick(AdapterView<?> parent, View view, final int position, long id) {
+        //TODO: Display options menu
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        String[] options = {"Rename File", "Delete File"};
+        builder.setTitle(R.string.file_options)
+                .setItems(options, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int which) {
+                        if(which == 0) //Rename option
+                            renameItemDialog(position);
+                        else if(which == 1)
+                            deleteItemDialog(position);
+                        updateListView(null);
+                    }
+                });
+        builder.create().show();
+        return true;
+    }
+
+    private void renameItemDialog(int position)
+    {
+        Object obj = getListView().getItemAtPosition(position);
+        System.out.println("Rename " + obj.toString());
+    }
+
+    private void deleteItemDialog(int position)
+    {
+        final Object obj = getListView().getItemAtPosition(position);
+
+        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Delete file?");
+        builder.setMessage(obj.toString());
+        builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                new File(userDir, obj.toString()).delete();
+                ServerConnection.fileDelete(obj.toString());
+                updateListView(null);
+                dialog.dismiss();
+            }
+        }).setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+            public void onClick(DialogInterface dialog, int id) {
+                dialog.dismiss();
+            }
+        });
+
+        AlertDialog dialog = builder.create();
+        dialog.show();
+    }
+
+    /*
+    LIST ITEM METHODS END
+     */
+
 
     /*
     CAPTURE PICTURE METHODS BEGIN
@@ -61,7 +144,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
         // Ensure that there's a camera activity to handle the intent
         if (takePictureIntent.resolveActivity(getPackageManager()) == null) {
-            Toast.makeText(this, "Sorry, no camera found on this system", Toast.LENGTH_LONG);
+            Toast.makeText(this, "Sorry, no camera found on this system", Toast.LENGTH_LONG).show();
             return;
         }
         // Create the File where the photo should go
@@ -73,7 +156,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         }
         // Continue only if the File was successfully created
         if (photoFile == null) {
-            Toast.makeText(this, "Sorry, I couldn't create a file to save the picture.", Toast.LENGTH_LONG);
+            Toast.makeText(this, "Sorry, I couldn't create a file to save the picture.", Toast.LENGTH_LONG).show();
             return;
         }
 
@@ -118,7 +201,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
                     ServerConnection.fileUpload(destination);
                     Most_Recent_Photo_File.delete();
                 } else
-                    Toast.makeText(this, "Sorry: Capture was either cancelled or interrupted", Toast.LENGTH_LONG);
+                    Toast.makeText(this, "Sorry: Capture was either cancelled or interrupted", Toast.LENGTH_LONG).show();
                 break;
             default:
                 break;
@@ -191,8 +274,6 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
                 new ArrayAdapter<String>(this, R.layout.arrayadapter_textview, files);
 
         setListAdapter(fileList);
-
-        curQuery = query.toLowerCase();
     }
 
     protected static void refreshViewFromStaticContext()
@@ -208,7 +289,18 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
     @Override
     public boolean onQueryTextChange(String newText) {
-        return false;
+        updateListView(newText);
+        return true;
+    }
+
+    /**
+     * This method will be called when the search UI is dismissed. To make use of it, you must
+     * implement this method in your activity, and call
+     * {@link android.app.SearchManager#setOnDismissListener} to register it.
+     */
+    @Override
+    public void onDismiss() {
+        searchView.setQuery("", false);
     }
     /*
     SEARCH METHODS END
@@ -225,13 +317,13 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
         // Get the SearchView and set the searchable configuration
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
-        SearchView searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
+        searchManager.setOnDismissListener(this);
 
         // Assumes current activity is the searchable activity
+        searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
         searchView.setIconifiedByDefault(false); // Do not iconify the widget; expand it by default
         searchView.setOnQueryTextListener(this);
-
         return true;
     }
 
@@ -296,10 +388,11 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
             ServerConnection.fileRestore(getDir(ServerConnection.getUserName(), MODE_PRIVATE));
         }
 
-
         userDir = getDir(ServerConnection.getUserName(), MODE_PRIVATE);
 
         updateListView(null);
+
+        getListView().setOnItemLongClickListener(this);
 
         // Get the intent, verify the action and get the query
         handleIntent(getIntent());

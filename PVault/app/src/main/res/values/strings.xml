@@ -9,5 +9,6 @@
     <string name="take_picture">Take Picture</string>
     <string name="add_from_file">Add From File</string>
     <string name="search">Search</string>
+    <string name="file_options">File Options</string>
 
 </resources>
