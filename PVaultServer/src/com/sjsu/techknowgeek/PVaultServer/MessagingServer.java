@@ -149,7 +149,7 @@ public class MessagingServer implements Runnable{
     private String changePassword() {
         int userNameStart = message.indexOf(":")+1, delimiter1 = message.indexOf(","), delimiter2 = message.indexOf(",", delimiter1+1);
         String user = message.substring(userNameStart, delimiter1);
-        String oldPassword = message.substring(delimiter1+1);
+        String oldPassword = message.substring(delimiter1+1, delimiter2);
         String newPassword = message.substring(delimiter2+1);
         
         try {

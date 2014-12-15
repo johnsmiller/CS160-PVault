@@ -10,5 +10,8 @@
     <string name="add_from_file">Add From File</string>
     <string name="search">Search</string>
     <string name="file_options">File Options</string>
+    <string name="change_password">Change Password</string>
+    <string name="upload_existing_to_server">Upload Existing Files</string>
+    <string name="download_existing_from_server">Download All Pictures</string>
 
 </resources>

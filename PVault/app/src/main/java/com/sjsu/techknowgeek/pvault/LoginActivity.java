@@ -157,7 +157,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         return email.contains("@");
     }
 
-    private boolean isPasswordValid(String password) {
+    protected static boolean isPasswordValid(String password) {
         //TODO: Replace this with your own logic
         return password.length() > 4;
     }
@@ -285,8 +285,8 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
     private void showNewUserPasswordPrompt(final String mEmail) {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Please enter your new password")
-                .setMessage("Enter password in twice");
+        builder.setTitle("Register new account")
+                .setMessage("Enter account password twice");
 
         // Set up the input
         LinearLayout linearLayout= new LinearLayout(this);
@@ -294,10 +294,12 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         final EditText pass1 = new EditText(this);
         pass1.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        pass1.setHint("Enter Password");
         linearLayout.addView(pass1);
 
         final EditText pass2 = new EditText(this);
         pass2.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        pass2.setHint("Reenter Password");
         linearLayout.addView(pass2);
 
         builder.setView(linearLayout);

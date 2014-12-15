@@ -105,7 +105,7 @@ public class Model {
     protected synchronized boolean changeUserPassword(String username, String oldPassword, String newPassword) throws FtpException
     {
         if(loginUser(username, oldPassword))
-        {            
+        {
             updateFtpUser(username, newPassword);
             
             return true;

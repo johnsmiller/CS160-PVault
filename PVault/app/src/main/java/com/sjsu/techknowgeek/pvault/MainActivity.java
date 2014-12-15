@@ -8,12 +8,19 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.res.Resources;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
 import android.support.v7.internal.view.menu.ListMenuItemView;
 import android.text.InputType;
+import android.text.TextUtils;
+import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -21,10 +28,14 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
+import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SearchView;
 import android.widget.Toast;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -37,10 +48,11 @@ import java.util.ArrayList;
 import java.util.Date;
 
 
-public class MainActivity extends ListActivity implements SearchView.OnQueryTextListener, SearchManager.OnDismissListener, AdapterView.OnItemLongClickListener {
+public class MainActivity extends ListActivity implements SearchView.OnQueryTextListener, SearchManager.OnDismissListener, SearchManager.OnCancelListener, AdapterView.OnItemLongClickListener {
 
     private static final int REQUEST_TAKE_PHOTO = 1;
     private static final int TIMEOUT_MILI = 300000;
+    private static final int MAX_PICTURE_SIZE = 2048; //Max size for image view/texture
 
     private static Long Last_Sys_Time;
     private static MainActivity curInstance;
@@ -66,8 +78,71 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
     @Override
     protected void onListItemClick (ListView l, View v, int position, long id) {
-        Toast.makeText(this, "Clicked row " + position, Toast.LENGTH_SHORT).show();
-        //TODO: Show picture
+        Object obj = getListView().getItemAtPosition(position);
+        File picture = new File(userDir, obj.toString());
+
+        Bitmap pictureBitmap =  decodeSampledBitmapFromResource(picture, MAX_PICTURE_SIZE, MAX_PICTURE_SIZE);
+
+        ImageView imageView = new ImageView(this);
+        imageView.setVisibility(View.VISIBLE);
+        imageView.setImageBitmap(pictureBitmap);
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setView(imageView);
+        builder.setTitle(obj.toString());
+        builder.create().show();
+    }
+
+    /**Method from
+     * http://developer.android.com/training/displaying-bitmaps/load-bitmap.html
+     *
+     * @param file
+     * @param maxWidth
+     * @param maxHeight
+     * @return
+     */
+    public static Bitmap decodeSampledBitmapFromResource(File file, int maxWidth, int maxHeight) {
+
+        // First decode with inJustDecodeBounds=true to check dimensions
+        final BitmapFactory.Options options = new BitmapFactory.Options();
+        options.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+
+        // Calculate inSampleSize
+        options.inSampleSize = calculateInSampleSize(options, maxWidth, maxHeight);
+
+        // Decode bitmap with inSampleSize set
+        options.inJustDecodeBounds = false;
+        Bitmap ret = BitmapFactory.decodeFile(file.getAbsolutePath(), options);
+        if(ret.getWidth()<ret.getHeight()) //If already portrait, just return
+            return ret;
+
+        //Else, we rotate
+        Matrix matrix = new Matrix();
+        matrix.postRotate(90);
+
+        return Bitmap.createBitmap(ret, 0, 0, ret.getWidth(), ret.getHeight(), matrix, true);
+    }
+
+    /**Method from
+     * http://developer.android.com/training/displaying-bitmaps/load-bitmap.html
+     *
+     * @param options
+     * @param maxHeight
+     * @param maxHeight
+     * @return
+     */
+    public static int calculateInSampleSize(
+            BitmapFactory.Options options, int maxWidth, int maxHeight) {
+        // Raw height and width of image
+        int height = options.outHeight;
+        int width = options.outWidth;
+        int inSampleSize = 1;
+
+        while((height/inSampleSize) > maxHeight || (width/inSampleSize) > maxWidth)
+            inSampleSize *= 2;
+
+        return inSampleSize;
     }
 
     /**
@@ -116,7 +191,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
             public void onClick(DialogInterface dialog, int which) {
                 //maintain file type
                 String strIn = input.getText().toString() + obj.toString().substring(obj.toString().lastIndexOf("."));
-                if(strIn == null || strIn.length()<=0 || new File(userDir, strIn).exists())
+                if(TextUtils.isEmpty(strIn) || new File(userDir, strIn).exists())
                 {
                     //TODO: Error Message
                     System.out.println("Error encountered with rename");
@@ -161,6 +236,66 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
         AlertDialog dialog = builder.create();
         dialog.show();
+    }
+
+    private void changePasswordDialog() {
+
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Change Password")
+                .setMessage("Enter current & new password (twice)");
+
+        // Set up the input
+        LinearLayout linearLayout= new LinearLayout(this);
+        linearLayout.setOrientation(LinearLayout.VERTICAL);
+
+        final EditText pass0 = new EditText(this);
+        pass0.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        pass0.setHint("Enter Current Password");
+        linearLayout.addView(pass0);
+
+        final EditText pass1 = new EditText(this);
+        pass1.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        pass1.setHint("Enter Password");
+        linearLayout.addView(pass1);
+
+        final EditText pass2 = new EditText(this);
+        pass2.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        pass2.setHint("Reenter Password");
+        linearLayout.addView(pass2);
+
+        builder.setView(linearLayout);
+
+        // Set up the buttons
+        builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //Get Passwords
+                String curPass = SealObject.encryptPass(pass0.getText().toString());
+                String passStr1 = SealObject.encryptPass(pass1.getText().toString());
+                String passStr2 = SealObject.encryptPass(pass2.getText().toString());
+
+                if(!ServerConnection.checkPass(curPass) || passStr1 == null || !passStr1.equals(passStr2) || !LoginActivity.isPasswordValid(passStr1))
+                {
+                    Toast.makeText(getApplicationContext(), "Error: Current or new password is invalid", Toast.LENGTH_LONG).show();
+                } else {
+                    if(ServerConnection.userPasswordChange(ServerConnection.getUserName(), curPass, passStr1)){
+                        Toast.makeText(getApplicationContext(), "Success! Password changed", Toast.LENGTH_LONG).show();
+                    } else {
+                        Toast.makeText(getApplicationContext(), "A server error occurred. Connect to the internet and try again.", Toast.LENGTH_LONG).show();
+                    }
+                }
+                //dialog.dismiss();
+            }
+        }).setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                //dialog.dismiss();
+            }
+        });
+
+        builder.show();
+        pass0.requestFocus();
+
     }
 
     /*
@@ -234,7 +369,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
                     File destination = new File(userDir, Most_Recent_Photo_File.getName());
                     //MOVE TO APP'S INTERNAL DIRECTORY
                     copyFile(Most_Recent_Photo_File, destination);
-                    ServerConnection.fileUpload(destination);
+                    ServerConnection.fileUpload(destination, false);
                     Most_Recent_Photo_File.delete();
                 } else
                     Toast.makeText(this, "Sorry: Capture was either cancelled or interrupted", Toast.LENGTH_LONG).show();
@@ -320,6 +455,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     @Override
     public boolean onQueryTextSubmit(String query) {
         updateListView(query);
+        searchView.clearFocus();
         return true;
     }
 
@@ -336,8 +472,21 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
      */
     @Override
     public void onDismiss() {
-        searchView.setQuery("", false);
+        searchView.setQuery("", true);
+        searchView.clearFocus();
     }
+
+    /**
+     * This method will be called when the search UI is canceled. To make use if it, you must
+     * implement this method in your activity, and call
+     * {@link android.app.SearchManager#setOnCancelListener} to register it.
+     */
+    @Override
+    public void onCancel() {
+        searchView.setQuery("", true);
+        searchView.clearFocus();
+    }
+
     /*
     SEARCH METHODS END
      */
@@ -354,15 +503,29 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         // Get the SearchView and set the searchable configuration
         SearchManager searchManager = (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         searchManager.setOnDismissListener(this);
+        searchManager.setOnCancelListener(this);
 
         // Assumes current activity is the searchable activity
         searchView = (SearchView) menu.findItem(R.id.action_search).getActionView();
         searchView.setSearchableInfo(searchManager.getSearchableInfo(getComponentName()));
         searchView.setIconifiedByDefault(false); // Do not iconify the widget; expand it by default
         searchView.setOnQueryTextListener(this);
+
+        // Get the search close button image view
+        int searchCloseButtonId = searchView.getContext().getResources()
+                .getIdentifier("android:id/search_close_btn", null, null);
+        ImageView closeButton = (ImageView) searchView.findViewById(searchCloseButtonId);
+
+        // Set on click listener
+        closeButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                searchView.setQuery("", true);
+                searchView.clearFocus();
+            }
+        });
         return true;
     }
-
 
     @Override
     public void onPause()
@@ -397,16 +560,31 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         // Handle action bar item clicks here. The action bar will
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
-        int id = item.getItemId();
+        switch (item.getItemId()) {
 
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_search || id == R.id.action_settings) {
-            return true;
+            //noinspection SimplifiableIfStatement
+            case R.id.action_change_password:
+                changePasswordDialog();
+                return true;
+
+            case R.id.action_search:
+                return true;
+
+            case R.id.action_download_all:
+                ServerConnection.fileRestore(userDir);
+                return true;
+
+            case R.id.action_upload_all:
+                ServerConnection.fileUpload(userDir, true);
+                return true;
+
+            default:
+                return super.onOptionsItemSelected(item);
+
         }
-
-        return super.onOptionsItemSelected(item);
-
     }
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {

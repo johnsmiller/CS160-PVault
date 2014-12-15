@@ -22,7 +22,11 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.util.Arrays;
+import java.util.Comparator;
 import java.util.concurrent.ExecutionException;
 
 /**
@@ -42,6 +46,11 @@ public class ServerConnection{
     protected static String getUserName()
     {
         return loginUserName;
+    }
+
+    protected static boolean checkPass(String pass)
+    {
+        return loginPassword != null && loginPassword.equals(pass);
     }
 
     /**
@@ -112,7 +121,11 @@ public class ServerConnection{
         //Send password change command, username, old password, and new password
         String command = "changePassword:" + userName + "," + oldPassword + "," + newPassword;
         String result = sendCommand(command);
-        return (result != null) && result.contains(SUCCESS_MESSAGE);
+        if((result != null) && result.contains(SUCCESS_MESSAGE)) {
+            loginPassword = newPassword;
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -120,10 +133,13 @@ public class ServerConnection{
      * connection error
      * @return true if successful
      */
-    protected static void fileUpload(File file)
+    protected static void fileUpload(File file, boolean isDir)
     {
         //Start file upload task
-        new UploadFileTask().execute(file);
+        if(isDir)
+            new UploadFileTask().execute(file.listFiles());
+        else
+            new UploadFileTask().execute(file);
     }
 
     /**
@@ -173,7 +189,7 @@ public class ServerConnection{
             status = mFtpClient.login(loginUserName, loginPassword);
             Log.i("isFTPConnected", String.valueOf(status));
             if (FTPReply.isPositiveCompletion(mFtpClient.getReplyCode())) {
-                mFtpClient.setFileType(FTP.ASCII_FILE_TYPE);
+                mFtpClient.setFileType(FTPClient.BINARY_FILE_TYPE);
                 mFtpClient.enterLocalPassiveMode();
                 if(!mFtpClient.changeWorkingDirectory("/"))
                     mFtpClient.makeDirectory("/");
@@ -213,24 +229,31 @@ public class ServerConnection{
             File parentDir = params[0];
             if (!parentDir.exists())
                 parentDir.mkdir();
+
             OutputStream outputStream = null;
+
             try {
                 FTPFile[] ftpFiles = mFTPClient.listFiles();
                 if(ftpFiles != null && ftpFiles.length > 0)
                 {
                     for(int i = 0; i<ftpFiles.length; i++)
                     {
-                        onProgressUpdate(i/ftpFiles.length);
-                        outputStream = new BufferedOutputStream(new FileOutputStream(parentDir + "/" + ftpFiles[i].getName()));
-                        mFTPClient.retrieveFile(ftpFiles[i].getName(), outputStream);
-                        outputStream.close();
+                        try {
+                            onProgressUpdate(i/ftpFiles.length);
+                            outputStream = new BufferedOutputStream(new FileOutputStream(parentDir + "/" + ftpFiles[i].getName()));
+                            mFTPClient.retrieveFile(ftpFiles[i].getName(), outputStream);
+                            outputStream.close();
+                        } catch (IOException ex) {
+                            Log.i("Download Files", "Unable to download " + ftpFiles[i].getName() + " from server", ex);
+                        }
+
                     }
                     Log.i("Download Files", "FTP Command Completed Successfully");
                     ftpServerDisconnect(mFTPClient);
                     return true;
                 }
             } catch (Exception ex) {
-                Log.e("Download Files", "FTP Command encountered an error");
+                Log.e("Download Files", "FTP Command encountered an error", ex);
             } finally {
                 ftpServerDisconnect(mFTPClient);
                 if (outputStream != null) {
@@ -256,27 +279,39 @@ public class ServerConnection{
     private static class UploadFileTask extends AsyncTask<File, Integer, Boolean> {
         protected Boolean doInBackground(File... params) {
 
-            //Upload one of the things!!!!!!
+            //Upload all of the things!!!!!!
 
             FTPClient mFTPClient = ftpServerConnect();
             if(mFTPClient==null)
                 return false;
 
-            try {
-                BufferedInputStream srcFileStream = new BufferedInputStream( new FileInputStream(params[0]));
-                mFTPClient.setFileType(FTPClient.BINARY_FILE_TYPE);
-                boolean status = mFTPClient.storeUniqueFile(params[0].getName(),
-                        srcFileStream);
-                Log.e("Status", String.valueOf(status));
-                srcFileStream.close();
-                ftpServerDisconnect(mFTPClient);
-                Log.i("Upload Files", "FTP Command Completed Successfully");
-                return status;
-            } catch (Exception e) {
-                Log.e("Upload Files", "FTP Command encountered an error");
-                ftpServerDisconnect(mFTPClient);
-                return false;
+            String[] fileNames = null;
+
+            try{
+                fileNames = mFTPClient.listNames();
+            } catch (IOException ex)
+            {
+
             }
+
+            for(File f : params) {
+                try {
+                    if(Arrays.binarySearch(fileNames, f.getName())>=0)
+                    {
+                        mFTPClient.deleteFile(f.getName());
+                    }
+                    BufferedInputStream srcFileStream = new BufferedInputStream(new FileInputStream(f));
+                    boolean status = mFTPClient.storeUniqueFile(f.getName(),
+                            srcFileStream);
+                    Log.i("FTP Upload Status", String.valueOf(status));
+                    srcFileStream.close();
+                }  catch (Exception e) {
+                    Log.i("Upload Files", "Uploading " + f.getName() + " may have failed", e);
+                }
+            }
+            ftpServerDisconnect(mFTPClient);
+            Log.i("Upload Files", "FTP Command Completed Successfully");
+            return true;
         }
 
         protected void onProgressUpdate(Integer... progress) {
@@ -363,7 +398,8 @@ public class ServerConnection{
 
         Socket socket;
         try {
-            socket = new Socket(SERVER_IP, SERVER_MESSAGING_PORT);
+            socket = new Socket();
+            socket.connect(new InetSocketAddress(SERVER_IP, SERVER_MESSAGING_PORT), SERVER_TIMEOUT);
             if (socket != null) {
                 BufferedReader reader = new BufferedReader(
                         new InputStreamReader(socket.getInputStream()));
@@ -379,7 +415,7 @@ public class ServerConnection{
             } else
                 Log.e("Socket", "Socket was null!");
         } catch (Exception e) {
-
+            Log.i("Messaging Server Error", "Sending Message Failed", e);
         }
         return result;
     }
