@@ -22,7 +22,11 @@ import android.os.Looper;
 import android.provider.ContactsContract;
 import android.text.InputType;
 import android.text.TextUtils;
+import android.text.method.DigitsKeyListener;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
@@ -89,6 +93,26 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the options menu from XML
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.menu_login, menu);
+
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if(item.getItemId() == R.id.action_set_server){
+            setSServerDialog();
+            return true;
+        }
+
+
+        return super.onOptionsItemSelected(item);
     }
 
     private void populateAutoComplete() {
@@ -334,6 +358,34 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         builder.show();
         pass1.requestFocus();
+    }
+
+    private void setSServerDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("Enter Server IP Address");
+
+        // Set up the input
+        final EditText serverIPTextField = new EditText(this);
+        serverIPTextField.setKeyListener(DigitsKeyListener.getInstance("0123456789."));
+        builder.setView(serverIPTextField);
+
+        // Set up the buttons
+        builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+                String strIn = serverIPTextField.getText().toString();
+                ServerConnection.setSERVER_IP(strIn);
+            }
+        }).setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialog, int which) {
+
+            }
+        });
+
+        builder.show();
+        serverIPTextField.requestFocus();
+
     }
 
 

@@ -13,5 +13,6 @@
     <string name="change_password">Change Password</string>
     <string name="upload_existing_to_server">Upload Existing Files</string>
     <string name="download_existing_from_server">Download All Pictures</string>
+    <string name="set_server_address">Set Server Address</string>
 
 </resources>

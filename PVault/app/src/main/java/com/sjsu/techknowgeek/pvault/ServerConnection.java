@@ -34,18 +34,23 @@ import java.util.concurrent.ExecutionException;
  * Warning: this program does not take into account concurrent commands/FTP connections.
  */
 public class ServerConnection{
-    private static final String SERVER_IP = "192.168.0.102";
     private static final Integer SERVER_MESSAGING_PORT = 7890;
     private static final int SERVER_TIMEOUT = 10000;
     private static final String SUCCESS_MESSAGE = "OK";
     private static final String FAILURE_MESSAGE = "SORRY";
 
+    private static String SERVER_IP = "192.168.0.1";
     private static String loginUserName;
     private static String loginPassword;
 
     protected static String getUserName()
     {
         return loginUserName;
+    }
+
+    protected static void setSERVER_IP(String server_ip)
+    {
+        SERVER_IP = server_ip;
     }
 
     protected static boolean checkPass(String pass)

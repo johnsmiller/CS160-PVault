@@ -1,6 +1,5 @@
 package com.sjsu.techknowgeek.pvault;
 
-import android.app.ActionBar;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.ListActivity;
@@ -8,7 +7,6 @@ import android.app.SearchManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
@@ -16,11 +14,8 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.support.v7.internal.view.menu.ListMenuItemView;
 import android.text.InputType;
 import android.text.TextUtils;
-import android.util.Log;
-import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
@@ -34,17 +29,15 @@ import android.widget.ListView;
 import android.widget.SearchView;
 import android.widget.Toast;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.nio.channels.FileChannel;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
 
 
@@ -52,7 +45,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
     private static final int REQUEST_TAKE_PHOTO = 1;
     private static final int TIMEOUT_MILI = 300000;
-    private static final int MAX_PICTURE_SIZE = 2048; //Max size for image view/texture
+    private static final int MAX_PICTURE_SIZE = 2048; //Max size for image view/texture via GPL
 
     private static Long Last_Sys_Time;
     private static MainActivity curInstance;
@@ -96,10 +89,10 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     /**Method from
      * http://developer.android.com/training/displaying-bitmaps/load-bitmap.html
      *
-     * @param file
-     * @param maxWidth
-     * @param maxHeight
-     * @return
+     * @param file picture file to decode
+     * @param maxWidth Maximum width supported
+     * @param maxHeight Maximum height supported
+     * @return the new bitmap
      */
     public static Bitmap decodeSampledBitmapFromResource(File file, int maxWidth, int maxHeight) {
 
@@ -127,10 +120,10 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     /**Method from
      * http://developer.android.com/training/displaying-bitmaps/load-bitmap.html
      *
-     * @param options
-     * @param maxHeight
-     * @param maxHeight
-     * @return
+     * @param options Factory options to retrieve picture size
+     * @param maxWidth Maximum width supported
+     * @param maxHeight Maximum height supported
+     * @return maxSampleSize
      */
     public static int calculateInSampleSize(
             BitmapFactory.Options options, int maxWidth, int maxHeight) {
@@ -139,8 +132,9 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         int width = options.outWidth;
         int inSampleSize = 1;
 
-        while((height/inSampleSize) > maxHeight || (width/inSampleSize) > maxWidth)
+        while(((height / inSampleSize) > maxHeight) || ((width / inSampleSize) > maxWidth)) {
             inSampleSize *= 2;
+        }
 
         return inSampleSize;
     }
@@ -193,11 +187,11 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
                 String strIn = input.getText().toString() + obj.toString().substring(obj.toString().lastIndexOf("."));
                 if(TextUtils.isEmpty(strIn) || new File(userDir, strIn).exists())
                 {
-                    //TODO: Error Message
-                    System.out.println("Error encountered with rename");
+                    Toast.makeText(getApplicationContext(), "Error encountered with rename", Toast.LENGTH_LONG).show();
                 } else {
                     File curFile = new File(userDir, obj.toString());
                     File newFile = new File(userDir, strIn);
+                    //noinspection ResultOfMethodCallIgnored
                     curFile.renameTo(newFile);
                     ServerConnection.fileRename(curFile.getName(), newFile.getName());
                     updateListView(null);
@@ -223,6 +217,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         builder.setMessage(obj.toString());
         builder.setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int id) {
+                //noinspection ResultOfMethodCallIgnored
                 new File(userDir, obj.toString()).delete();
                 ServerConnection.fileDelete(obj.toString());
                 updateListView(null);
@@ -348,6 +343,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         String imageFileName = "JPEG_" + timeStamp;
         File tempDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);//AUGH! Camera cannot access app-only files. WHYY ME!!!!!!!
         File image = new File(tempDir /* directory */, imageFileName+ /* prefix */".jpg"/* suffix */);
+        //noinspection ResultOfMethodCallIgnored
         image.createNewFile();
         return image;
     }
@@ -356,7 +352,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
      * Called when camera intent returns
      * @param requestCode code given to identify request to this app
      * @param resultCode result of operation
-     * @param data
+     * @param data unused for photo
      */
 
     @Override
@@ -365,11 +361,12 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
         switch (requestCode) {
             case (REQUEST_TAKE_PHOTO):
-                if (resultCode == Activity.RESULT_OK && Most_Recent_Photo_File.exists()) {
+                if ((resultCode == Activity.RESULT_OK) && Most_Recent_Photo_File.exists()) {
                     File destination = new File(userDir, Most_Recent_Photo_File.getName());
                     //MOVE TO APP'S INTERNAL DIRECTORY
                     copyFile(Most_Recent_Photo_File, destination);
                     ServerConnection.fileUpload(destination, false);
+                    //noinspection ResultOfMethodCallIgnored
                     Most_Recent_Photo_File.delete();
                 } else
                     Toast.makeText(this, "Sorry: Capture was either cancelled or interrupted", Toast.LENGTH_LONG).show();
@@ -438,11 +435,10 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         }
 
         ArrayList<String> files = new ArrayList<>();
-        for(String s : list)
-            files.add(s);
+        Collections.addAll(files, list);
 
         ArrayAdapter<String> fileList =
-                new ArrayAdapter<String>(this, R.layout.arrayadapter_textview, files);
+                new ArrayAdapter<>(this, R.layout.arrayadapter_textview, files);
 
         setListAdapter(fileList);
     }
@@ -585,7 +581,6 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     }
 
 
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -593,11 +588,8 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
         curInstance = this;
 
-        //TODO: prompt to download all files
         if(!new File(this.getApplicationInfo().dataDir + "/app_"+ServerConnection.getUserName()).exists()) {
-            //prompt to download all existing data
-            System.out.println("Downloading existing files");
-
+            Toast.makeText(getApplicationContext(), "Files found on server. Commencing download", Toast.LENGTH_SHORT).show();
             //download all existing data
             ServerConnection.fileRestore(getDir(ServerConnection.getUserName(), MODE_PRIVATE));
         }
@@ -610,7 +602,6 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
         // Get the intent, verify the action and get the query
         handleIntent(getIntent());
-
     }
     /*
     STANDARD ANDROID ACTIVITY METHODS END
