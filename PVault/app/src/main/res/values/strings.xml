@@ -11,8 +11,11 @@
     <string name="search">Search</string>
     <string name="file_options">File Options</string>
     <string name="change_password">Change Password</string>
-    <string name="upload_existing_to_server">Upload Existing Files</string>
-    <string name="download_existing_from_server">Download All Pictures</string>
+    <string name="upload_existing_to_server">Upload Existing Pictures</string>
+    <string name="download_existing_from_server">Download Existing Pictures</string>
     <string name="set_server_address">Set Server Address</string>
+    <string name="saved_ip_address_default">192.168.0.102</string>
+    <string name="saved_ip_address">SERVER_IP_ADDRESS</string>
+    <string name="saved_email_address">SAVED_EMAIL_ADDRESS</string>
 
 </resources>

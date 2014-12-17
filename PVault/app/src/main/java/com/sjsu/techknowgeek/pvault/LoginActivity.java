@@ -6,19 +6,17 @@ import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.LoaderManager.LoaderCallbacks;
-import android.content.ContentResolver;
 import android.content.Context;
 import android.content.CursorLoader;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.Loader;
+import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.AsyncTask;
-
 import android.os.Build;
 import android.os.Bundle;
-import android.os.Looper;
 import android.provider.ContactsContract;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -38,9 +36,6 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.internal.in;
-
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -93,6 +88,20 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
 
         mLoginFormView = findViewById(R.id.login_form);
         mProgressView = findViewById(R.id.login_progress);
+
+        //Set server ip address
+        String ipAddressName = getString(R.string.saved_ip_address);
+        String ipAddressDefault = getResources().getString(R.string.saved_ip_address_default);
+        String ipAddress =  readFromPreferences(ipAddressName, ipAddressDefault);
+        ServerConnection.setSERVER_IP(ipAddress);
+
+        //Set previous email
+        String mEmailName = getString(R.string.saved_email_address);
+        String emailFromFile = readFromPreferences(mEmailName, "");
+        mEmailView.setText(emailFromFile);
+
+        if(!TextUtils.isEmpty(emailFromFile))
+            mPasswordView.requestFocus();
     }
 
     @Override
@@ -107,7 +116,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if(item.getItemId() == R.id.action_set_server){
-            setSServerDialog();
+            setServerDialog();
             return true;
         }
 
@@ -360,7 +369,7 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         pass1.requestFocus();
     }
 
-    private void setSServerDialog() {
+    private void setServerDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Enter Server IP Address");
 
@@ -375,6 +384,9 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
             public void onClick(DialogInterface dialog, int which) {
                 String strIn = serverIPTextField.getText().toString();
                 ServerConnection.setSERVER_IP(strIn);
+                writeToPreferences(getString(R.string.saved_ip_address), strIn);
+
+
             }
         }).setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
             @Override
@@ -386,6 +398,20 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
         builder.show();
         serverIPTextField.requestFocus();
 
+    }
+
+    private void writeToPreferences(String name, String value)
+    {
+        SharedPreferences prefs = getPreferences(Context.MODE_PRIVATE);
+        SharedPreferences.Editor editor = prefs.edit();
+        editor.putString(name, value);
+        editor.commit();
+    }
+
+    private String readFromPreferences(String name, String defaultValue)
+    {
+        SharedPreferences sharedPref = getPreferences(Context.MODE_PRIVATE);
+        return sharedPref.getString(name, defaultValue);
     }
 
 
@@ -447,7 +473,9 @@ public class LoginActivity extends Activity implements LoaderCallbacks<Cursor> {
                             startMainActivity();
                         }
                     });
-                    finish();
+                    writeToPreferences(getString(R.string.saved_email_address), mEmail);
+                    mPasswordView.setText("");
+                    mPasswordView.requestFocus();
                     break;
 
                 case -1: //User exists, but bad password

@@ -71,6 +71,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
 
     @Override
     protected void onListItemClick (ListView l, View v, int position, long id) {
+        searchView.clearFocus();
         Object obj = getListView().getItemAtPosition(position);
         File picture = new File(userDir, obj.toString());
 

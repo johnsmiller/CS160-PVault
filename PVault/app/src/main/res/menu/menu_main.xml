@@ -1,15 +1,15 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <item android:id="@+id/action_change_password"
-        android:title="@string/change_password"
-        android:showAsAction="never" />
-
     <item android:id="@+id/action_upload_all"
         android:title="@string/upload_existing_to_server"
         android:showAsAction="never" />
 
     <item android:id="@+id/action_download_all"
         android:title="@string/download_existing_from_server"
+        android:showAsAction="never" />
+
+    <item android:id="@+id/action_change_password"
+        android:title="@string/change_password"
         android:showAsAction="never" />
 
     <item
