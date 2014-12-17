@@ -43,16 +43,16 @@ import java.util.Date;
 
 public class MainActivity extends ListActivity implements SearchView.OnQueryTextListener, SearchManager.OnDismissListener, SearchManager.OnCancelListener, AdapterView.OnItemLongClickListener {
 
-    private static final int REQUEST_TAKE_PHOTO = 1;
-    private static final int TIMEOUT_MILI = 300000;
+    private static final int REQUEST_TAKE_PHOTO = 1; //Photo request ID
+    private static final int TIMEOUT_MILI = 300000; //App to log out after 5 minutes
     private static final int MAX_PICTURE_SIZE = 2048; //Max size for image view/texture via GPL
 
-    private static Long Last_Sys_Time;
+    private static Long Last_Sys_Time; //Security check to ensure app logout
     private static MainActivity curInstance;
     private static File Most_Recent_Photo_File;
     private static SearchView searchView;
 
-    File userDir;
+    File userDir; //Directory for current user
 
     /*
     LIST ITEM METHODS BEGIN
@@ -168,6 +168,11 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         return true;
     }
 
+    /**
+     * Method to produce a dialog for renaming files
+     *
+     * @param position position of item clicked
+     */
     private void renameItemDialog(int position)
     {
         final Object obj = getListView().getItemAtPosition(position);
@@ -209,6 +214,11 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         input.requestFocus();
     }
 
+    /**
+     * Method to produce dialog to confirm deleting selected item
+     *
+     * @param position selected item
+     */
     private void deleteItemDialog(int position)
     {
         final Object obj = getListView().getItemAtPosition(position);
@@ -234,6 +244,9 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         dialog.show();
     }
 
+    /**
+     * method to produce a dialog to change user password
+     */
     private void changePasswordDialog() {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
@@ -377,6 +390,13 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         }
     }
 
+    /**
+     * Method used to copy captured image file from public directory (where camera can save it) to
+     * local directory
+     *
+     * @param src source file
+     * @param dst destination file
+     */
     public static void copyFile(File src, File dst)
     {
         FileChannel inChannel = null;
@@ -411,6 +431,10 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     SEARCH METHODS BEGIN
      */
 
+    /**
+     * Handle search method intent
+     * @param intent ignored if not search method intent
+     */
     private void handleIntent(Intent intent) {
         if (Intent.ACTION_SEARCH.equals(intent.getAction())) {
             final String query = intent.getStringExtra(SearchManager.QUERY);
@@ -418,6 +442,10 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         }
     }
 
+    /**
+     * Used by search methods to filter the list view with the specified query string
+     * @param query
+     */
     private void updateListView(final String query)
     {
         String[] list;
@@ -444,11 +472,19 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         setListAdapter(fileList);
     }
 
+    /**
+     * Caller to refresh current list view from a static context
+     */
     protected static void refreshViewFromStaticContext()
     {
         curInstance.updateListView(null);
     }
 
+    /**
+     * Method to update the search view when search button pushed
+     * @param query the current (full) query in the search field
+     * @return true that this shit has been handled
+     */
     @Override
     public boolean onQueryTextSubmit(String query) {
         updateListView(query);
@@ -456,6 +492,11 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
         return true;
     }
 
+    /**
+     * Method to update the search view when new text is entered
+     * @param newText the current (full) query in the search field
+     * @return true that this query has been handled
+     */
     @Override
     public boolean onQueryTextChange(String newText) {
         updateListView(newText);
@@ -463,9 +504,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     }
 
     /**
-     * This method will be called when the search UI is dismissed. To make use of it, you must
-     * implement this method in your activity, and call
-     * {@link android.app.SearchManager#setOnDismissListener} to register it.
+     * This method will be called when the search UI is dismissed.
      */
     @Override
     public void onDismiss() {
@@ -474,9 +513,7 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
     }
 
     /**
-     * This method will be called when the search UI is canceled. To make use if it, you must
-     * implement this method in your activity, and call
-     * {@link android.app.SearchManager#setOnCancelListener} to register it.
+     * This method will be called when the search UI is canceled.
      */
     @Override
     public void onCancel() {
@@ -543,14 +580,6 @@ public class MainActivity extends ListActivity implements SearchView.OnQueryText
             updateListView(null);
         }
     }
-/*
-    @Override
-    public void onStop()
-    {
-        super.onStop();
-        this.finish();
-    }
-*/
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {

@@ -3,6 +3,7 @@
 
 package com.sjsu.techknowgeek.pvault;
 
+import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
 import java.math.BigInteger;
@@ -26,11 +27,12 @@ import javax.crypto.spec.SecretKeySpec;
  * Created by John on 11/13/2014.
  */
 public class SealObject {
-    private static final String salt = "k9l2a42t";
+    private static final String salt = "zfl2a12c";
     private final Cipher cipher;
     private final Cipher dcipher;
 
-    /**
+    /**Initiates cipher for encryption/decryption. Not actually used since professor cleared not
+     * doing actual encryption
      *
      * @param Password
      * @throws NoSuchAlgorithmException
@@ -53,30 +55,24 @@ public class SealObject {
         dcipher.init(Cipher.DECRYPT_MODE, secret);
     }
 
-    /**
+    /** The would-be encryption would go here. Professor cleared not doing actual encryption
      *
      * @param input
      * @return
-     * @throws IOException
-     * @throws IllegalBlockSizeException
      */
-    protected <T extends Serializable> SealedObject encrypt(T input) throws IOException, IllegalBlockSizeException
+    protected static void encrypt(File input)
     {
-        return new SealedObject(input, cipher);
+        return;
     }
 
-    /**
+    /**The would-be decryption would go here. Professor cleared not doing actual decryption
      *
      * @param input
      * @return
-     * @throws IOException
-     * @throws ClassNotFoundException
-     * @throws IllegalBlockSizeException
-     * @throws BadPaddingException
      */
-    protected Object decrypt(SealedObject input) throws IOException, ClassNotFoundException, IllegalBlockSizeException, BadPaddingException
+    protected static void decrypt(File input)
     {
-        return input.getObject(dcipher);
+        return;
     }
 	
 	protected static String encryptPass(String Password)

@@ -31,7 +31,7 @@ import java.util.concurrent.ExecutionException;
 
 /**
  * Created by John on 11/20/2014.
- * Warning: this program does not take into account concurrent commands/FTP connections.
+ * Warning: concurrent Server Commands or FTP connections may cause undefined behavior
  */
 public class ServerConnection{
     private static final Integer SERVER_MESSAGING_PORT = 7890;
@@ -43,16 +43,32 @@ public class ServerConnection{
     private static String loginUserName;
     private static String loginPassword;
 
+    /**
+     * Return the most recent logged in user name
+     * @return username of current user
+     */
     protected static String getUserName()
     {
         return loginUserName;
     }
 
+    /**
+     * Set the IP address for the FTP and Command server
+     * (Ports are non-negotiable)
+     * @param server_ip IP Address of server
+     */
     protected static void setSERVER_IP(String server_ip)
     {
         SERVER_IP = server_ip;
     }
 
+    /**
+     * check if the given password is equal to the last password used to log in
+     * (Technically, this method compares the hashed versions of the passwords, since this app
+     * hashes all passwords)
+     * @param pass the hashed version of the password given
+     * @return true if the hashed password given matches the hash of the login password stored
+     */
     protected static boolean checkPass(String pass)
     {
         return loginPassword != null && loginPassword.equals(pass);
@@ -181,6 +197,10 @@ public class ServerConnection{
         download.execute(parentDirectory);
     }
 
+    /**
+     * Establishes an FTP connection and returns the FTPClient object. Null if connection failed
+     * @return FTPClient or null
+     */
     private static FTPClient ftpServerConnect()
     {
         if(loginUserName == null || loginPassword == null)
@@ -209,6 +229,10 @@ public class ServerConnection{
         }
     }
 
+    /**
+     * Used to disconnect an FTP session. All errors are ignored.
+     * @param ftpClient the FTP client to be disconnected
+     */
     private static void ftpServerDisconnect(FTPClient ftpClient)
     {
 
@@ -224,6 +248,9 @@ public class ServerConnection{
         }
     }
 
+    /**
+     * Downloads all files currently on the server to the given directory
+     */
     private static class DownloadFilesTask extends AsyncTask<File, Integer, Boolean> {
         protected Boolean doInBackground(File... params) {
             //Download all the things!!!!!!
@@ -281,6 +308,9 @@ public class ServerConnection{
         }
     }
 
+    /**
+     * Uploads all files to the server. Existing files are deleted and re-uploaded.
+     */
     private static class UploadFileTask extends AsyncTask<File, Integer, Boolean> {
         protected Boolean doInBackground(File... params) {
 
@@ -328,6 +358,10 @@ public class ServerConnection{
         }
     }
 
+    /**
+     * Background task to either rename a file or delete it on the server via FTP commands.
+     * If one string is passed, file is deleted, if two strings, file is renamed
+     */
     private static class ModifyFilesTask extends AsyncTask<String, Void, Boolean> {
         protected Boolean doInBackground(String... params) {
             //Download all the things!!!!!!
@@ -370,6 +404,10 @@ public class ServerConnection{
         }
     }
 
+    /**
+     * Used by sendCommand() to launch a background task if the UI thread attempts a server
+     * connection
+     */
     private static class ServerCommandTask extends AsyncTask<String, Void, String> {
         protected String doInBackground(String... params) {
             //Command all the things!!!!!!
@@ -385,7 +423,13 @@ public class ServerConnection{
         }
     }
 
-
+    /**
+     * All messaging server commands call this method. If method is called by UI Thread, a background
+     * task is auto-launched to run this method in the background
+     *
+     * @param command command to be sent to the server
+     * @return null if server connection failed, or server's response if command completed
+     */
     private static String sendCommand(String command) {
         String result = null;
 
